@@ -10,14 +10,14 @@ enum CleanupRestriction: Int, Sendable {
         case .link: return "符号链接仅供分析，请在 Finder 中处理。"
         case .fileType: return "此文件类型仅供分析。"
         case .package: return "应用或资料包及其内容仅供分析。"
-        case .protectedContent: return "系统、Library 和应用资料包仅供分析，请在对应应用中管理。"
+        case .protectedContent: return "此项目包含受保护的系统目录、用户资料库或废纸篓，仅供分析。"
         }
     }
 }
 
 enum CleanupPolicy {
     private static let systemRoots: Set<String> = ["system", "library", "applications", "usr", "bin", "sbin", "etc", "private", "var", "dev", "network"]
-    private static let protectedComponents: Set<String> = ["library", ".trash", ".trashes", ".spotlight-v100", ".fseventsd"]
+    private static let protectedComponents: Set<String> = [".trash", ".trashes", ".spotlight-v100", ".fseventsd"]
     static func isDescendant(_ child: URL, of parent: URL) -> Bool {
         let base = parent.standardizedFileURL.pathComponents
         let path = child.standardizedFileURL.pathComponents
@@ -31,8 +31,10 @@ enum CleanupPolicy {
             if part == ".." { if !parts.isEmpty { parts.removeLast() } }
             else { parts.append(part.lowercased()) }
         }
-        if let first = parts.first, systemRoots.contains(first) { return true }
-        if parts.count > 2, parts[0] == "volumes", systemRoots.contains(parts[2]) { return true }
+        // Match Library at its system or user-home location, not arbitrary project names.
+        let volumePath = parts.count > 2 && parts[0] == "volumes" ? Array(parts.dropFirst(2)) : parts
+        if let first = volumePath.first, systemRoots.contains(first) { return true }
+        if volumePath.count >= 3, volumePath[0] == "users", volumePath[2] == "library" { return true }
         return parts.contains { protectedComponents.contains($0) }
     }
 

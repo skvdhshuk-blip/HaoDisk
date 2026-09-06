@@ -198,7 +198,7 @@ final class HaoDiskTests: XCTestCase {
     }
 
     func testTrashRefusesProtectedLocationWithoutCallingOperation() throws {
-        try file("Library/a", bytes: 50)
+        try file(".Trash/a", bytes: 50)
         let scan = try DiskScanner().scan(root)
         var called = false
         let result = TrashService().move([0, 1], in: scan) { _ in called = true }
@@ -256,25 +256,41 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("folder/nested/a").path))
     }
 
-    func testLibraryIsProtectedEvenThroughItsParent() throws {
+    func testProjectLibraryAndItsParentCanBeCleaned() throws {
         try file("folder/Library/a", bytes: 50)
         let scan = try DiskScanner().scan(root)
         let folder = try XCTUnwrap(scan.nodes.first { $0.name == "folder" })
-        XCTAssertNotNil(CleanupPolicy.reason(for: folder.id, in: scan))
+        XCTAssertNil(CleanupPolicy.reason(for: folder.id, in: scan))
+        let library = try XCTUnwrap(scan.nodes.first { $0.name == "Library" })
+        XCTAssertNil(CleanupPolicy.reason(for: library.id, in: scan))
+        XCTAssertFalse(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Users/a/project/library/data")))
+        XCTAssertFalse(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Volumes/External/project/Library/data")))
+        XCTAssertTrue(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Volumes/External/Users/a/Library/data")))
+        XCTAssertTrue(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Library/data")))
     }
 
-    func testPackageRestrictionsPropagateToAncestorsAndContents() throws {
+    func testPackagesProtectContentsButNotTheirParent() throws {
         try file("outer/Test.app/Contents/data", bytes: 10)
         try file("okay/item", bytes: 10)
         let scan = try DiskScanner().scan(root)
-        for name in ["outer", "Test.app", "Contents", "data"] {
+        for name in ["Test.app", "Contents", "data"] {
             let node = try XCTUnwrap(scan.nodes.first { $0.name == name })
             XCTAssertNotNil(CleanupPolicy.reason(for: node.id, in: scan))
         }
+        let outer = try XCTUnwrap(scan.nodes.first { $0.name == "outer" })
+        XCTAssertNil(CleanupPolicy.reason(for: outer.id, in: scan))
         let okay = try XCTUnwrap(scan.nodes.first { $0.name == "okay" })
         XCTAssertNil(CleanupPolicy.reason(for: okay.id, in: scan))
         XCTAssertTrue(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Users/a/Downloads/../Library/data")))
         XCTAssertFalse(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Users/a/Library/../Downloads/data")))
+    }
+
+    func testProtectedTrashStillBlocksParentWithAnApp() throws {
+        try file("outer/Test.app/Contents/data", bytes: 10)
+        try file("outer/.Trash/data", bytes: 10)
+        let scan = try DiskScanner().scan(root)
+        let outer = try XCTUnwrap(scan.nodes.first { $0.name == "outer" })
+        XCTAssertEqual(outer.restriction, .protectedContent)
     }
 
     func testPermissionFailureIsVisibleAndBlocksCleanup() throws {

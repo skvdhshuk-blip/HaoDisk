@@ -19,7 +19,7 @@ extension DiskSnapshot {
         let index = try! ScanIndex()
         try! index.transaction {
             for node in nodes {
-                try index.insert(node, ownLogical: node.isDirectory ? 0 : node.logicalBytes, ownAllocated: node.isDirectory ? 0 : node.allocatedBytes, insidePackage: node.isPackage, protected: node.isPackage || CleanupPolicy.protectedPath(node.url))
+                try index.insert(node, ownLogical: node.isDirectory ? 0 : node.logicalBytes, ownAllocated: node.isDirectory ? 0 : node.allocatedBytes, insidePackage: node.isPackage, protected: CleanupPolicy.protectedPath(node.url))
             }
             try index.execute("UPDATE nodes SET enumerated=1")
             if stopReason != nil { try index.execute("UPDATE nodes SET enumerated=0,state=1 WHERE id=0") }

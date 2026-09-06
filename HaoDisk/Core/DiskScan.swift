@@ -121,7 +121,7 @@ struct DiskScanner: Sendable {
         return try index.access {
             let package = (try? root.resourceValues(forKeys: [.isPackageKey]).isPackage) == true
             let rootNode = DiskNode(id: 0, url: root, parent: nil, identity: identity, isPackage: package, state: .pending)
-            try index.insert(rootNode, ownLogical: 0, ownAllocated: 0, insidePackage: package, protected: package || CleanupPolicy.protectedPath(root))
+            try index.insert(rootNode, ownLogical: 0, ownAllocated: 0, insidePackage: package, protected: CleanupPolicy.protectedPath(root))
             var lastID = 0
             var issues: [ScanIssue] = []
             var allocated: Int64 = 0
@@ -158,7 +158,7 @@ struct DiskScanner: Sendable {
                                         let inside = parentPackage || isPackage
                                         let logical = itemIdentity.isRegular || itemIdentity.isLink ? max(0, itemIdentity.size) : 0
                                         let bytes = itemIdentity.isLink ? max(0, blocks) : itemIdentity.isRegular ? max(0, Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? Int(blocks))) : 0
-                                        let duplicate = try index.insert(node, ownLogical: logical, ownAllocated: bytes, insidePackage: inside, protected: isPackage || CleanupPolicy.protectedPath(url))
+                                        let duplicate = try index.insert(node, ownLogical: logical, ownAllocated: bytes, insidePackage: inside, protected: CleanupPolicy.protectedPath(url))
                                         if !duplicate { allocated += bytes }
                                         if node.issueCount > 0, issues.count < 100 { issues.append(ScanIssue(id: issues.count, path: url.path, message: "跳过其他挂载卷，请单独选择该卷。")) }
                                     } catch let error as NSError where error.domain == NSPOSIXErrorDomain || error.domain == NSCocoaErrorDomain {

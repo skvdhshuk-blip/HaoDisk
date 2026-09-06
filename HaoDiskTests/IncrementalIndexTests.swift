@@ -23,6 +23,43 @@ final class IncrementalIndexTests: XCTestCase {
         return url
     }
     func move(_ url: URL) throws { try FileManager.default.moveItem(at: url, to: moved.appendingPathComponent(UUID().uuidString)) }
+    func testProjectWithLibraryAndAppCanBeMovedAndUpdatedIncrementally() throws {
+        try file("project/library/data", 100)
+        try file("project/build/Test.app/Contents/Library/data", 200)
+        try file("other/keep", 300)
+        let scan = try DiskScanner().scan(root)
+        let project = try XCTUnwrap(scan.index.node(path: root.appendingPathComponent("project").path))
+        let library = try XCTUnwrap(scan.index.node(path: root.appendingPathComponent("project/library").path))
+        let app = try XCTUnwrap(scan.index.node(path: root.appendingPathComponent("project/build/Test.app").path))
+        XCTAssertNil(project.restriction)
+        XCTAssertNil(library.restriction)
+        XCTAssertEqual(app.restriction, .package)
+        let childResult = TrashService().move([library.id], in: scan, operation: move)
+        XCTAssertNil(childResult.first?.error)
+        XCTAssertNil(childResult.updateError)
+        XCTAssertNil(try scan.index.node(project.id)?.restriction)
+        let result = TrashService().move([project.id], in: childResult.snapshot, operation: move)
+        XCTAssertNil(result.first?.error)
+        XCTAssertNil(result.updateError)
+        XCTAssertEqual(result.snapshot.version, scan.version)
+        XCTAssertNil(try scan.index.node(project.id))
+        XCTAssertNil(try scan.index.node(app.id))
+        XCTAssertEqual(result.snapshot.root.logicalBytes, 300)
+    }
+
+    func testChangedAppContentsStillBlockParentCleanup() throws {
+        let data = try file("project/Test.app/Contents/data", 100)
+        let scan = try DiskScanner().scan(root)
+        let project = try XCTUnwrap(scan.index.node(path: root.appendingPathComponent("project").path))
+        XCTAssertNil(project.restriction)
+        try Data(repeating: 66, count: 200).write(to: data)
+        var called = false
+        let result = TrashService().move([project.id], in: scan) { _ in called = true }
+        XCTAssertFalse(called)
+        XCTAssertNotNil(result.first?.error)
+        XCTAssertNotNil(try scan.index.node(project.id))
+    }
+
     func testChildThenParentAndUnrelatedCacheSurvives() async throws {
         try file("folder/child", 100)
         try file("folder/keep", 200)
