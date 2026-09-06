@@ -19,6 +19,11 @@ private final class FolderAccess {
 struct DirectoryDisplay: Sendable {
     let snapshot: DiskSnapshot
     let presentation: DirectoryPresentation
+    let nodes: [Int: DiskNode]
+    init(snapshot: DiskSnapshot, presentation: DirectoryPresentation, retained: [Int: DiskNode] = [:]) {
+        self.snapshot = snapshot; self.presentation = presentation
+        self.nodes = retained.merging(presentation.nodes) { _, new in new }
+    }
 }
 
 @MainActor
@@ -33,7 +38,14 @@ final class ScanProgressModel: ObservableObject {
 final class DiskModel: ObservableObject {
     @Published private(set) var display: DirectoryDisplay?
     @Published var volumeCapacity: VolumeCapacity?
-    @Published var selectedID: Int?
+    @Published var selectedID: Int? {
+        didSet {
+            if let oldValue, oldValue != currentID, !basket.contains(oldValue), !history.contains(oldValue), !future.contains(oldValue) {
+                retainedNodes.removeValue(forKey: oldValue)
+            }
+            if let selectedID, let node = nodes[selectedID] { retainedNodes[selectedID] = node }
+        }
+    }
     @Published var metric: SizeMetric = .allocated { didSet { if oldValue != metric { refreshDirectory() } } }
     @Published var sort: DirectorySort = .sizeDescending { didSet { if oldValue != sort { refreshDirectory() } } }
     @Published private(set) var isLoadingDirectory = false
@@ -60,6 +72,11 @@ final class DiskModel: ObservableObject {
     private var directoryTask: Task<Void, Never>?
     private var directoryRequest = UUID()
     private var pendingID: Int?
+    private var retainedNodes: [Int: DiskNode] = [:]
+    private var pageTask: Task<Void, Never>?
+    private var requestedPage: Int?
+    @Published private(set) var cleanupInvalid = false
+    var nodes: [Int: DiskNode] { display?.nodes ?? [:] }
 
     var snapshot: DiskSnapshot? { display?.snapshot }
     var presentation: DirectoryPresentation? { display?.presentation }
@@ -72,17 +89,15 @@ final class DiskModel: ObservableObject {
     var rootFolderName: String { access?.url.lastPathComponent ?? "文件夹" }
     var canGoBack: Bool { !history.isEmpty }
     var canGoForward: Bool { !future.isEmpty }
-    var current: DiskNode? { snapshot?.nodes[currentID] }
-    var selected: DiskNode? {
-        guard let snapshot, let selectedID, snapshot.nodes.indices.contains(selectedID) else { return nil }
-        return snapshot.nodes[selectedID]
-    }
-    var directoryCount: Int { current?.children.count ?? 0 }
-    var basketNodes: [DiskNode] { basket.sorted().compactMap { snapshot?.nodes[$0] } }
+    var current: DiskNode? { presentation?.directory }
+    var selected: DiskNode? { selectedID.flatMap { nodes[$0] } }
+    var directoryCount: Int { presentation?.rowCount ?? 0 }
+    var basketNodes: [DiskNode] { basket.sorted().compactMap { nodes[$0] } }
     var basketBytes: Int64 { basketNodes.reduce(0) { $0 + $1.bytes(metric) } }
 
     private func cancelDirectory() {
         directoryTask?.cancel()
+        pageTask?.cancel(); requestedPage = nil
         directoryRequest = UUID()
         pendingID = nil
         isLoadingDirectory = false
@@ -99,12 +114,14 @@ final class DiskModel: ObservableObject {
         directoryRequest = token
         pendingID = id
         isLoadingDirectory = true
+        let keep = Set(history + future).union(basket).union([currentID, id]).union(selectedID.map { [$0] } ?? [])
+        retainedNodes = retainedNodes.filter { keep.contains($0.key) }
         let metric = metric, sort = sort
         directoryTask = Task {
             do {
-                let value = try await directoryCache.value(for: snapshot, directoryID: id, metric: metric, sort: sort)
+                let value = try await directoryCache.value(for: snapshot, directoryID: id, metric: metric, sort: sort, selecting: selection)
                 guard !Task.isCancelled, directoryRequest == token, self.snapshot?.version == snapshot.version else { return }
-                display = DirectoryDisplay(snapshot: snapshot, presentation: value)
+                display = DirectoryDisplay(snapshot: snapshot, presentation: value, retained: retainedNodes)
                 selectedID = selection.flatMap { value.rowByID[$0] == nil ? nil : $0 }
             } catch is CancellationError {
                 // A newer directory request owns the display.
@@ -122,7 +139,9 @@ final class DiskModel: ObservableObject {
         await directoryCache.reset(version: result.snapshot.version, seed: result.presentation)
         selectedID = nil
         basket = []
-        display = DirectoryDisplay(snapshot: result.snapshot, presentation: result.presentation)
+        retainedNodes = result.retainedNodes
+        cleanupInvalid = false
+        display = DirectoryDisplay(snapshot: result.snapshot, presentation: result.presentation, retained: retainedNodes)
         selectedID = result.selectedID
         history = result.history
         future = result.future
@@ -130,8 +149,8 @@ final class DiskModel: ObservableObject {
     }
 
     func node(for id: Int, version: UUID) -> DiskNode? {
-        guard let snapshot, snapshot.version == version, snapshot.nodes.indices.contains(id) else { return nil }
-        return snapshot.nodes[id]
+        guard snapshot?.version == version else { return nil }
+        return nodes[id]
     }
 
     @discardableResult
@@ -142,10 +161,33 @@ final class DiskModel: ObservableObject {
     }
 
     func selectOffset(_ offset: Int) {
-        guard !isBrowsingBusy, let presentation, !presentation.rowIDs.isEmpty else { return }
+        guard !isBrowsingBusy, let presentation, presentation.rowCount > 0 else { return }
         let index = selectedID.flatMap { presentation.rowByID[$0] }
-        let next = index.map { min(presentation.rowIDs.count - 1, max(0, $0 + offset)) } ?? (offset > 0 ? 0 : presentation.rowIDs.count - 1)
-        selectedID = presentation.rowIDs[next]
+        let next = index.map { min(presentation.rowCount - 1, max(0, $0 + offset)) } ?? (offset > 0 ? 0 : presentation.rowCount - 1)
+        if let node = presentation.node(at: next) { selectedID = node.id }
+        else { loadPage(at: next, selectRow: true) }
+    }
+
+    func loadPage(at row: Int, selectRow: Bool = false) {
+        guard !isBrowsingBusy, let snapshot, let presentation, row >= 0, row < presentation.rowCount else { return }
+        let page = row / 512
+        let wanted = [page - 1, page, page + 1].filter { $0 >= 0 && $0 * 512 < presentation.rowCount }
+        if wanted.allSatisfy({ presentation.pages[$0] != nil }) {
+            if selectRow { selectedID = presentation.node(at: row)?.id }
+            return
+        }
+        guard requestedPage != page else { return }
+        pageTask?.cancel(); requestedPage = page
+        let key = presentation.key
+        pageTask = Task {
+            defer { if requestedPage == page { requestedPage = nil } }
+            do {
+                let value = try await directoryCache.value(for: snapshot, directoryID: key.directoryID, metric: key.metric, sort: key.sort, row: row)
+                guard !Task.isCancelled, self.presentation?.key == key else { return }
+                display = DirectoryDisplay(snapshot: snapshot, presentation: value, retained: retainedNodes)
+                if selectRow { selectedID = value.node(at: row)?.id }
+            } catch is CancellationError {} catch { message = error.localizedDescription }
+        }
     }
 
     func openSelected() {
@@ -154,8 +196,8 @@ final class DiskModel: ObservableObject {
     }
 
     var selectedCleanupReason: String? {
-        guard let snapshot, let selected else { return nil }
-        return CleanupPolicy.reason(for: selected.id, in: snapshot)
+        guard let selected else { return nil }
+        return cleanupInvalid ? "分析结果已失效，请重新扫描。" : CleanupPolicy.reason(for: selected.id, in: nodes)
     }
 
     func reviewSelected() {
@@ -217,6 +259,7 @@ final class DiskModel: ObservableObject {
         access = nil
         cancelDirectory()
         display = nil
+        retainedNodes = [:]; cleanupInvalid = false
         Task { await directoryCache.reset() }
         volumeCapacity = nil
         basket = []
@@ -226,14 +269,15 @@ final class DiskModel: ObservableObject {
 
     func scan(preservingOutcomes: Bool = false) {
         guard !isBusy, let url = access?.url else { return }
-        let sameRoot = snapshot?.root.url == url.resolvingSymlinksInPath().standardizedFileURL
+        let sameRoot = snapshot?.root.url == url
         let restoration = ScanRestoration(
             currentPath: sameRoot ? current?.url.path : nil,
             selectedPath: sameRoot ? selected?.url.path : nil,
-            history: sameRoot ? history.compactMap { snapshot?.nodes[$0].url.path } : [],
-            future: sameRoot ? future.compactMap { snapshot?.nodes[$0].url.path } : [],
+            history: sameRoot ? history.compactMap { nodes[$0]?.url.path } : [],
+            future: sameRoot ? future.compactMap { nodes[$0]?.url.path } : [],
             queue: sameRoot ? (preservingOutcomes ? outcomes.filter { $0.error != nil }.map { $0.url.path } : basketNodes.map { $0.url.path }) : [])
         cancelDirectory()
+        display = nil; retainedNodes = [:]; selectedID = nil
         isScanning = true
         basket = []
         showInspector = false
@@ -283,8 +327,10 @@ final class DiskModel: ObservableObject {
     func cancelScan() { worker?.cancel() }
 
     func navigate(_ id: Int) {
-        guard !isBusy, let snapshot, snapshot.nodes.indices.contains(id), snapshot.nodes[id].canNavigate,
+        guard !isBusy, let node = nodes[id], node.canNavigate,
               (pendingID ?? currentID) != id else { return }
+        if let current { retainedNodes[current.id] = current }
+        retainedNodes[node.id] = node
         history.append(pendingID ?? currentID)
         future = []
         selectedID = nil
@@ -307,29 +353,49 @@ final class DiskModel: ObservableObject {
     }
 
     func up() {
-        if let snapshot, let id = snapshot.nodes[pendingID ?? currentID].parent { navigate(id) }
+        if let id = nodes[pendingID ?? currentID]?.parent { navigate(id) }
     }
 
     func reveal(_ node: DiskNode) { NSWorkspace.shared.activateFileViewerSelecting([node.url]) }
 
     func add(_ node: DiskNode) {
-        guard !isBrowsingBusy, let snapshot else { return }
-        if let reason = CleanupPolicy.reason(for: node.id, in: snapshot) { message = reason; return }
-        basket = CleanupPolicy.adding(node.id, to: basket, in: snapshot)
+        guard !isBrowsingBusy, !cleanupInvalid else { return }
+        if let reason = CleanupPolicy.reason(for: node.id, in: nodes) { message = reason; return }
+        retainedNodes[node.id] = node
+        basket = CleanupPolicy.adding(node, to: basket, nodes: nodes)
     }
 
     func trashReviewedItems() {
-        guard !isBrowsingBusy, let snapshot, !basket.isEmpty else { return }
+        guard !isBrowsingBusy, !cleanupInvalid, let snapshot, !basket.isEmpty else { return }
         let ids = basket
+        let restoration = ScanRestoration(currentPath: current?.url.path, selectedPath: selected?.url.path,
+            history: history.compactMap { nodes[$0]?.url.path }, future: future.compactMap { nodes[$0]?.url.path }, queue: basketNodes.map { $0.url.path })
+        let metric = metric, sort = sort
         isCleaning = true
+        cancelDirectory()
         Task {
-            let result = await Task.detached(priority: .userInitiated) {
-                TrashService().move(ids, in: snapshot)
-            }.value
-            outcomes = result
+            let result = await Task.detached(priority: .userInitiated) { TrashService().move(ids, in: snapshot) }.value
+            outcomes = result.outcomes
+            volumeCapacity = VolumeCapacity(total: result.snapshot.totalCapacity, available: result.snapshot.availableCapacity)
+            if let error = result.updateError {
+                cleanupInvalid = true
+                message = error
+                basket.subtract(result.outcomes.filter { $0.error == nil }.map(\.id))
+            } else {
+                do {
+                    let prepared = try await Task.detached(priority: .userInitiated) {
+                        try PreparedScan.prepare(result.snapshot, restoration: restoration, metric: metric, sort: sort)
+                    }.value
+                    // Keep the session and unrelated directory caches after a local edit.
+                    retainedNodes = prepared.retainedNodes
+                    selectedID = nil
+                    display = DirectoryDisplay(snapshot: prepared.snapshot, presentation: prepared.presentation, retained: retainedNodes)
+                    selectedID = prepared.selectedID
+                    history = prepared.history; future = prepared.future; basket = prepared.queue
+                } catch { cleanupInvalid = true; message = "清理已完成，分析更新失败。请重新扫描。\n\(error.localizedDescription)" }
+            }
             isCleaning = false
             showReview = false
-            scan(preservingOutcomes: true)
         }
     }
 }

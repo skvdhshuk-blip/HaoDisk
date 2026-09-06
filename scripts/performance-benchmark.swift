@@ -1,82 +1,79 @@
-// Compile with Core/*.swift, UI/DiskModel.swift and UI/MapLayout.swift using swiftc -O.
+// swiftc -O HaoDisk/Core/*.swift HaoDisk/UI/DiskModel.swift HaoDisk/UI/MapLayout.swift scripts/performance-benchmark.swift -o /tmp/haodisk-benchmark
 import Foundation
-import Darwin
+import AppKit
+
 @main struct Benchmark {
- static func timings(_ count: Int, _ body: () throws -> Void) rethrows -> [Double] {
-  try (0..<count).map { _ in let start = DispatchTime.now().uptimeNanoseconds; try body(); return Double(DispatchTime.now().uptimeNanoseconds-start)/1_000_000 }
- }
- static func flat(_ count: Int) -> DiskSnapshot {
-  let root = URL(fileURLWithPath: "/HaoDisk-Benchmark", isDirectory: true)
-  let dir = FileIdentity(device: 1, inode: 1, mode: UInt16(S_IFDIR | 0o755), size: 0, modifiedSeconds: 0, modifiedNanos: 0)
-  let file = FileIdentity(device: 1, inode: 2, mode: UInt16(S_IFREG | 0o644), size: 4096, modifiedSeconds: 0, modifiedNanos: 0)
-  var nodes = [DiskNode(id: 0, url: root, parent: nil, identity: dir, isPackage: false)]
-  for i in 1...count { var node = DiskNode(id: i, url: root.appendingPathComponent("document-\((i * 7919) % count)-长名称.txt", isDirectory: false), parent: 0, identity: file, isPackage: false); node.allocatedBytes=Int64(i % 127 + 1)*4096; node.logicalBytes=node.allocatedBytes; nodes.append(node) }
-  nodes[0].children = Array(1...count); nodes[0].allocatedBytes=nodes.dropFirst().reduce(0){$0+$1.allocatedBytes}; nodes[0].logicalBytes=nodes[0].allocatedBytes
-  return DiskSnapshot(nodes:nodes,issues:[],issueCount:0,stopReason:nil,elapsed:0,totalCapacity:nil,availableCapacity:nil)
- }
- @MainActor static func main() async throws {
-  var report:[String:Any]=[:]
-  var checksum = 0
-  for count in [12000,100000] {
-   let scan = flat(count)
-   let cache = DirectoryCache()
-   var cold:[Double]=[]
-   for _ in 0..<3 {
-    await cache.reset()
-    let start=DispatchTime.now().uptimeNanoseconds
-    let value=try await cache.value(for:scan,directoryID:0,metric:.allocated,sort:.nameAscending)
-    cold.append(Double(DispatchTime.now().uptimeNanoseconds-start)/1_000_000)
-    checksum += value.rowIDs.count
-   }
-   report["cold_prepare_\(count)_ms"]=cold
-   var hits:[Double]=[]
-   for _ in 0..<100 {
-    let start=DispatchTime.now().uptimeNanoseconds
-    let value=try await cache.value(for:scan,directoryID:0,metric:.allocated,sort:.nameAscending)
-    checksum += value.rowIDs.count
-    hits.append(Double(DispatchTime.now().uptimeNanoseconds-start)/1_000_000)
-   }
-   report["cached_directory_\(count)_ms"]=hits
-   let model=DiskModel()
-   await model.install(try PreparedScan.prepare(scan,metric:.allocated,sort:.nameAscending))
-   report["selection_\(count)_ms"]=timings(1000) {
-    model.selectOffset(1)
-    checksum += model.selectedCleanupReason?.count ?? 0
-    checksum += model.presentation?.rowByID[model.selectedID ?? 0] ?? 0
-   }
-   let layout=MapLayoutModel()
-   let map=model.presentation!.map
-   let size=CGSize(width:700,height:650)
-   layout.update(map,size:size)
-   report["map_reuse_\(count)_ms"]=timings(1000){layout.update(map,size:size);checksum += layout.tiles.count}
-   report["map_layouts_after_1000_reuses_\(count)"]=layout.layoutCount
-   var width=700
-   report["map_resize_\(count)_ms"]=timings(100){width += 1;layout.update(map,size:CGSize(width:width,height:650))}
-  }
-  if let path = CommandLine.arguments.dropFirst().first {
-  let scan=try DiskScanner().scan(URL(fileURLWithPath:path))
-  guard let target=scan.nodes.first(where: {$0.name=="target" && $0.parent==0}) else { throw CleanupError.refused("实测目录必须包含 target 子目录。") }
-  report["real_nodes"]=scan.nodes.count; report["target_descendants"]=target.descendantCount
-  let model=DiskModel()
-  await model.install(try PreparedScan.prepare(scan,metric:.allocated,sort:.sizeDescending))
-  report["target_selection_ms"]=timings(1000) {
-   model.selectedID = target.id
-   checksum += model.selectedCleanupReason?.count ?? 0
-   checksum += model.presentation?.rowByID[target.id] ?? 0
-  }
-  model.navigate(target.id); await model.waitForDirectory()
-  model.back(); await model.waitForDirectory()
-  var switches:[Double]=[]
-  for i in 0..<100 {
-   let start=DispatchTime.now().uptimeNanoseconds
-   if i % 2 == 0 {model.forward()} else {model.back()}
-   await model.waitForDirectory()
-   checksum += model.currentID
-   switches.append(Double(DispatchTime.now().uptimeNanoseconds-start)/1_000_000)
-  }
-  report["real_cached_model_navigation_ms"]=switches
-  }
-  report["checksum"]=checksum
-  print(String(data:try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]),encoding:.utf8)!)
- }
+    static func duration<T>(_ operation: () throws -> T) rethrows -> (T, Double) {
+        let start = ProcessInfo.processInfo.systemUptime
+        let value = try operation()
+        return (value, (ProcessInfo.processInfo.systemUptime - start) * 1000)
+    }
+    static func percentile(_ values: [Double]) -> Double { values.sorted()[min(values.count - 1, Int(Double(values.count) * 0.95))] }
+    static func synthetic(_ count: Int) throws -> DiskSnapshot {
+        let index = try ScanIndex()
+        let root = URL(fileURLWithPath: "/HaoDisk-Benchmark")
+        let identity = FileIdentity(device: 1, inode: 0, mode: 0o40755, size: 0, modifiedSeconds: 0, modifiedNanos: 0)
+        try index.transaction {
+            try index.insert(DiskNode(id: 0, url: root, parent: nil, identity: identity, isPackage: false), ownLogical: 0, ownAllocated: 0, insidePackage: false, protected: false)
+            for i in 1...count {
+                try autoreleasepool {
+                    let identity = FileIdentity(device: 1, inode: UInt64(i), mode: 0o100644, size: Int64(i), modifiedSeconds: 0, modifiedNanos: 0)
+                    let node = DiskNode(id: i, url: root.appendingPathComponent("document-\((i * 7919) % count)-长中文名称.txt"), parent: 0, identity: identity, isPackage: false)
+                    try index.insert(node, ownLogical: Int64(i), ownAllocated: Int64(i % 127 + 1) * 4096, insidePackage: false, protected: false)
+                }
+            }
+            try index.execute("UPDATE nodes SET enumerated=1")
+            try index.aggregateAll(lastID: count)
+        }
+        return DiskSnapshot(index: index, root: try index.node(0)!, issues: [], stopReason: nil, elapsed: 0, totalCapacity: nil, availableCapacity: nil)
+    }
+    @MainActor static func main() async throws {
+        var report: [String: Any] = ["version": "0.2.4", "measurement": "internal logic milliseconds; not input-to-frame latency"]
+        for count in [12_000, 100_000, 600_001] {
+            let scan = try await Task.detached { try synthetic(count) }.value
+            let prepared = try await Task.detached { try duration { try PreparedScan.prepare(scan, metric: .logical, sort: .nameAscending) } }.value
+            let model = DiskModel()
+            await model.install(prepared.0)
+            var selections: [Double] = [], cached: [Double] = [], paging: [Double] = []
+            let queries = scan.index.queryCount
+            for id in model.presentation!.rowIDs.prefix(100) {
+                selections.append(duration { _ = model.select(id, version: scan.version); _ = model.selectedCleanupReason }.1)
+            }
+            let selectionQueries = scan.index.queryCount - queries
+            for _ in 0..<100 {
+                let start = ProcessInfo.processInfo.systemUptime
+                _ = try await model.directoryCache.value(for: scan, directoryID: 0, metric: .logical, sort: .nameAscending)
+                cached.append((ProcessInfo.processInfo.systemUptime-start)*1000)
+            }
+            for row in stride(from: 0, to: min(count, 100_000), by: 4096) {
+                let start = ProcessInfo.processInfo.systemUptime
+                _ = try await model.directoryCache.value(for: scan, directoryID: 0, metric: .logical, sort: .nameAscending, row: row)
+                paging.append((ProcessInfo.processInfo.systemUptime-start)*1000)
+            }
+            let layout = MapLayoutModel()
+            let map = model.presentation!.map
+            layout.update(map, size: CGSize(width: 700, height: 500))
+            let hoverReuse = duration { for _ in 0..<1000 { layout.update(map, size: CGSize(width: 700, height: 500)) } }.1
+            report["synthetic_\(count)"] = ["prepare_ms": prepared.1, "selection_p95_ms": percentile(selections), "selection_sql_queries": selectionQueries,
+                "cache_p95_ms": percentile(cached), "page_p95_ms": percentile(paging), "retained_rows": await model.directoryCache.retainedRowIDs,
+                "layout_reuse_1000_ms": hoverReuse, "layout_count": layout.layoutCount, "node_count": scan.root.descendantCount, "logical_total": scan.root.logicalBytes]
+            model.forgetFolder()
+        }
+        for path in CommandLine.arguments.dropFirst() {
+            let scan = try await Task.detached {
+                try DiskScanner().scan(URL(fileURLWithPath: path), progress: { value in
+                    if value.count % 10_000 < 100 { FileHandle.standardError.write(Data("\(value.count) \(value.folder)\n".utf8)) }
+                })
+            }.value
+            let prepared = try await Task.detached { try duration { try PreparedScan.prepare(scan, metric: .allocated, sort: .sizeDescending) } }.value
+            var children: [[String: Any]] = []
+            for row in prepared.0.presentation.pages.values.flatMap({ $0.values }).sorted(by: { $0.name < $1.name }) {
+                children.append(["name": row.name, "logical": row.logicalBytes, "allocated": row.allocatedBytes, "descendants": row.descendantCount, "state": row.state.rawValue])
+            }
+            report[path] = ["scan_seconds": scan.elapsed, "nodes": scan.root.descendantCount, "logical": scan.root.logicalBytes, "allocated": scan.root.allocatedBytes,
+                            "complete": scan.isComplete, "issues": scan.issueCount, "prepare_ms": prepared.1, "children": children]
+        }
+        let data = try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+        FileHandle.standardOutput.write(data)
+    }
 }

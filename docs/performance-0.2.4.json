@@ -1,0 +1,81 @@
+{
+  "version": "0.2.4",
+  "baseline_commit": "10825dd0936c763e98123caef493d579e2f91e63",
+  "baseline": {
+    "12000": {
+      "cache_p95_ms": 0.0112500274553895,
+      "cleanup_policy_p95_ms": 0.000125030055642128,
+      "prepare_ms": 88.36212498135865,
+      "retained_rows": 12000
+    },
+    "100000": {
+      "cache_p95_ms": 0.06925000343471766,
+      "cleanup_policy_p95_ms": 0.00016659032553434372,
+      "prepare_ms": 710.2105000521988,
+      "retained_rows": 100000
+    }
+  },
+  "synthetic": {
+    "measurement": "internal logic milliseconds; not input-to-frame latency",
+    "synthetic_12000": {
+      "cache_p95_ms": 0.050625065341591835,
+      "layout_count": 1,
+      "layout_reuse_1000_ms": 0.07245829328894615,
+      "logical_total": 72006000,
+      "node_count": 12000,
+      "page_p95_ms": 4.370541661046445,
+      "prepare_ms": 91.26862499397248,
+      "retained_rows": 4096,
+      "selection_p95_ms": 0.004125060513615608,
+      "selection_sql_queries": 0
+    },
+    "synthetic_100000": {
+      "cache_p95_ms": 0.07587508298456669,
+      "layout_count": 1,
+      "layout_reuse_1000_ms": 0.058583333157002926,
+      "logical_total": 5000050000,
+      "node_count": 100000,
+      "page_p95_ms": 11.763333342969418,
+      "prepare_ms": 815.7007083063945,
+      "retained_rows": 4096,
+      "selection_p95_ms": 0.02162496093660593,
+      "selection_sql_queries": 0
+    },
+    "synthetic_600001": {
+      "cache_p95_ms": 0.028666574507951736,
+      "layout_count": 1,
+      "layout_reuse_1000_ms": 0.06079161539673805,
+      "logical_total": 180000900001,
+      "node_count": 600001,
+      "page_p95_ms": 10.52112493198365,
+      "prepare_ms": 5496.679000090808,
+      "retained_rows": 4096,
+      "selection_p95_ms": 0.005333335138857365,
+      "selection_sql_queries": 0
+    },
+    "version": "0.2.4"
+  },
+  "workspace": {
+    "allocated": 350045896704,
+    "complete": true,
+    "issues": 0,
+    "logical": 337842921831,
+    "nodes": 4958686,
+    "prepare_ms": 119.46291662752628,
+    "scan_seconds": 572.0123950242996
+  },
+  "independent": {
+    "nodes": 4958686,
+    "direct": 97,
+    "logical": 337842919783,
+    "stat_allocated": 350045896704,
+    "issues": [],
+    "seconds": 152.323601333
+  },
+  "cli_peak_footprint_bytes": 137265848,
+  "native_completed_footprint": "86.9M",
+  "native_peak_footprint": "136.3M",
+  "swift_tests": 35,
+  "xcode_tests": 40,
+  "end_to_end_frame_latency": "not independently measured"
+}

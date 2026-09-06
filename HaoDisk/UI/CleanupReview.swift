@@ -36,7 +36,7 @@ struct CleanupReview: View {
                 Button("取消") { model.showReview = false }.keyboardShortcut(.cancelAction).disabled(model.isCleaning)
                 Button("移到废纸篓", role: .destructive) { model.trashReviewedItems() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(model.basket.isEmpty || model.isCleaning)
+                    .disabled(model.basket.isEmpty || model.isCleaning || model.cleanupInvalid)
             }
         }.padding(24).frame(width: 600).interactiveDismissDisabled(model.isCleaning)
     }

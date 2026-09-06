@@ -89,13 +89,13 @@ struct ContentView: View {
     }
 
     private func breadcrumbs(_ snapshot: DiskSnapshot) -> some View {
-        let ancestors = snapshot.ancestors(of: model.currentID)
+        let ancestors = model.presentation?.ancestors.map(\.id) ?? []
         return HStack(spacing: 9) {
             Image(systemName: "folder").foregroundStyle(.secondary)
             if ancestors.count > 3 {
                 Menu {
                     ForEach(Array(ancestors.dropLast(2)), id: \.self) { id in
-                        Button(snapshot.nodes[id].name) { model.navigate(id) }
+                        Button(model.nodes[id]?.name ?? "") { model.navigate(id) }
                     }
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
                 Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
@@ -105,10 +105,10 @@ struct ContentView: View {
                     Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(.tertiary)
                 }
                 Button { model.navigate(id) } label: {
-                    Text(snapshot.nodes[id].name).fontWeight(id == model.currentID ? .medium : .regular)
+                    Text(model.nodes[id]?.name ?? "").fontWeight(id == model.currentID ? .medium : .regular)
                         .lineLimit(1).truncationMode(.middle)
                 }.buttonStyle(.plain).foregroundStyle(id == model.currentID ? .primary : .secondary)
-                    .help(snapshot.nodes[id].url.path)
+                    .help(model.nodes[id]?.url.path ?? "")
                     .layoutPriority(id == model.currentID ? 1 : 0)
             }
         }.disabled(model.isBusy)
@@ -147,7 +147,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder private func workspace(_ snapshot: DiskSnapshot) -> some View {
-        if model.presentation?.rowIDs.isEmpty != false {
+        if model.presentation?.rowCount == 0 {
             let partial = snapshot.stoppedEarly || (model.current?.issueCount ?? 0) > 0
             ContentUnavailableView(partial ? "没有已读取的项目" : "这个文件夹是空的", systemImage: partial ? "folder.badge.questionmark" : "folder", description: Text(partial ? "重新扫描或查看读取问题。" : "返回上层继续分析。"))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -200,8 +200,8 @@ struct ContentView: View {
                 Grid(alignment: .leading, horizontalSpacing: 26, verticalSpacing: 10) {
                     infoRow("占用空间", nodeSizeLabel(node, metric: .allocated))
                     infoRow("文件大小", nodeSizeLabel(node, metric: .logical))
-                    if node.isDirectory { infoRow(node.issueCount > 0 || model.snapshot?.stoppedEarly == true ? "已读项目" : "包含", "\(node.descendantCount.formatted()) 项") }
-                    if node.issueCount == 0 { infoRow("当前目录占比", percentage(node.bytes(model.displayedMetric), total: model.current?.bytes(model.displayedMetric) ?? 0)) }
+                    if node.isDirectory { infoRow(node.state != .complete ? "已读项目" : "包含", "\(node.descendantCount.formatted()) 项") }
+                    if node.state == .complete { infoRow("当前目录占比", percentage(node.bytes(model.displayedMetric), total: model.current?.bytes(model.displayedMetric) ?? 0)) }
                 }.font(.callout)
                 Text(node.url.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 if let reason = model.selectedCleanupReason { Label(reason, systemImage: "lock").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
@@ -256,11 +256,7 @@ struct ContentView: View {
                 if (model.snapshot?.issueCount ?? 0) > 100 { Text("显示前 100 处读取问题").font(.caption).foregroundStyle(.secondary) }
             }
             HStack {
-                if case .nodeLimit = model.snapshot?.stopReason {
-                    Button("选择较小的文件夹…") { model.showIssues = false; model.chooseFolder() }
-                } else {
-                    Button("重新扫描") { model.showIssues = false; model.scan() }
-                }
+                Button("重新扫描") { model.showIssues = false; model.scan() }
                 Spacer()
                 Button("完成") { model.showIssues = false }.keyboardShortcut(.cancelAction)
             }
@@ -320,7 +316,7 @@ struct NodeMenu: View {
             if model.basket.contains(id) { Button("从待清理移除") { perform { model.basket.remove($0.id) } } }
             else {
                 Button("加入待清理") { perform { model.add($0) } }
-                    .disabled(model.snapshot.map { CleanupPolicy.reason(for: id, in: $0) != nil } ?? true)
+                    .disabled(model.cleanupInvalid || CleanupPolicy.reason(for: id, in: model.nodes) != nil)
             }
         }
     }

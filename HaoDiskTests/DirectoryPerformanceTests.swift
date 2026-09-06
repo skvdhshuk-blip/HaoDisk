@@ -14,16 +14,14 @@ final class DirectoryPerformanceTests: XCTestCase {
         var nodes = [DiskNode(id: 0, url: root, parent: nil, identity: directory, isPackage: false)]
         for i in 1...folders {
             nodes.append(DiskNode(id: i, url: root.appendingPathComponent("Folder\(i)"), parent: 0, identity: directory, isPackage: false))
-            nodes[0].children.append(i)
         }
         for i in 0..<count {
             let parent = i % folders + 1
             let id = nodes.count
-            var node = DiskNode(id: id, url: nodes[parent].url.appendingPathComponent("中文长名称-\(count-i)"), parent: parent, identity: file, isPackage: false)
+            var node = DiskNode(id: id, url: nodes[parent].url.appendingPathComponent("中文长名称-\(count-i)"), parent: parent, identity: FileIdentity(device: 1, inode: UInt64(id + 1), mode: file.mode, size: 0, modifiedSeconds: 0, modifiedNanos: 0), isPackage: false)
             node.allocatedBytes = Int64(i + 1) * 4096
             node.logicalBytes = Int64(count - i)
             nodes.append(node)
-            nodes[parent].children.append(id)
             nodes[parent].allocatedBytes += node.allocatedBytes
             nodes[parent].logicalBytes += node.logicalBytes
         }
@@ -88,21 +86,22 @@ final class DirectoryPerformanceTests: XCTestCase {
     func testLargeDirectoryCancellationAndDefaultCacheLimits() async throws {
         let scan = snapshot(100_000, folders: 1)
         var checks = 0
-        XCTAssertThrowsError(try DirectoryPresentation.prepare(scan, directoryID: 1, metric: .logical, sort: .nameAscending, cancelled: { checks += 1; return checks > 100 })) {
+        XCTAssertThrowsError(try DirectoryPresentation.prepare(scan, directoryID: 1, metric: .logical, sort: .nameAscending, cancelled: { checks += 1; return checks > 1 })) {
             XCTAssertTrue($0 is CancellationError)
         }
         let cache = DirectoryCache()
         for metric in SizeMetric.allCases {
             for sort in DirectorySort.allCases {
                 let view = try await cache.value(for: scan, directoryID: 1, metric: metric, sort: sort)
-                XCTAssertEqual(view.rowIDs.count, 100_000)
+                XCTAssertEqual(view.rowCount, 100_000)
+                XCTAssertLessThanOrEqual(view.loadedCount, 1536)
                 XCTAssertEqual(view.map.entries.count, 81)
                 let retained = await cache.retainedRowIDs
                 XCTAssertLessThanOrEqual(retained, 500_000)
             }
         }
         let entries = await cache.entryCount
-        XCTAssertEqual(entries, 5)
+        XCTAssertEqual(entries, 8)
         let small = snapshot(40, folders: 20)
         for id in 1...20 { _ = try await cache.value(for: small, directoryID: id, metric: .allocated, sort: .sizeDescending) }
         let viewLimit = await cache.entryCount
@@ -163,7 +162,7 @@ final class DirectoryPerformanceTests: XCTestCase {
         let model = DiskModel()
         let old = snapshot(90)
         await model.install(try PreparedScan.prepare(old, metric: .allocated, sort: .sizeDescending))
-        XCTAssertTrue(model.select(90, version: old.version))
+        XCTAssertTrue(model.select(1, version: old.version))
         let fresh = snapshot(3)
         await model.install(try PreparedScan.prepare(fresh, metric: .allocated, sort: .sizeDescending))
         XCTAssertNil(model.node(for: 90, version: old.version))
@@ -190,7 +189,7 @@ final class DirectoryPerformanceTests: XCTestCase {
         let layout = MapLayoutModel()
         let size = CGSize(width: 700, height: 500)
         layout.update(map, size: size)
-        for id in scan.nodes[1].children.prefix(100) {
+        for id in (try scan.index.page(DirectoryPresentation.prepare(scan, directoryID: 1, metric: .allocated, sort: .sizeDescending).key, start: 0)).values.prefix(100).map(\.id) {
             model.selectedID = id
             _ = model.selectedCleanupReason
             layout.update(map, size: size)

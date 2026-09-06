@@ -53,10 +53,30 @@ struct DirectoryTable: NSViewRepresentable {
         table.alphaValue = model.isScanning ? 0.55 : 1
         // Snapshot/directory/metric/sort form the data identity; selection is O(1).
         if coordinator.display?.presentation.key != model.presentation?.key {
+            let oldOrigin = scroll.contentView.bounds.origin
+            if let old = coordinator.display?.presentation.key {
+                let key = "\(old.version)-\(old.directoryID)"
+                coordinator.scrollPositions[key] = oldOrigin
+                coordinator.scrollOrder.removeAll { $0 == key }; coordinator.scrollOrder.append(key)
+                while coordinator.scrollOrder.count > 16 { coordinator.scrollPositions.removeValue(forKey: coordinator.scrollOrder.removeFirst()) }
+            }
             coordinator.display = model.display
             coordinator.updating = true
             table.reloadData()
+            if let key = model.presentation?.key {
+                scroll.contentView.scroll(to: coordinator.scrollPositions["\(key.version)-\(key.directoryID)"] ?? .zero)
+                scroll.reflectScrolledClipView(scroll.contentView)
+            }
             coordinator.updating = false
+        }
+        if coordinator.display?.presentation.pageVersion != model.presentation?.pageVersion {
+            coordinator.display = model.display
+            let visible = table.rows(in: table.visibleRect)
+            if visible.location != NSNotFound {
+                coordinator.updating = true
+                table.reloadData(forRowIndexes: IndexSet(integersIn: visible.location..<min(table.numberOfRows, visible.upperBound)), columnIndexes: IndexSet(integersIn: 0..<table.numberOfColumns))
+                coordinator.updating = false
+            }
         }
         let descriptor = NSSortDescriptor(key: model.sort.byName ? "name" : "size", ascending: model.sort.ascending)
         if table.sortDescriptors != [descriptor] {
@@ -92,6 +112,8 @@ struct DirectoryTable: NSViewRepresentable {
         weak var table: NSTableView?
         var display: DirectoryDisplay?
         var basket: Set<Int> = []
+        var scrollPositions: [String: CGPoint] = [:]
+        var scrollOrder: [String] = []
         private let folderIcon = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil)
         private let fileIcon = NSImage(systemSymbolName: "doc", accessibilityDescription: nil)
         private let linkIcon = NSImage(systemSymbolName: "link", accessibilityDescription: nil)
@@ -99,14 +121,19 @@ struct DirectoryTable: NSViewRepresentable {
         private let issueIcon = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "未完整读取")
         var updating = false
         init(model: DiskModel) { self.model = model }
-        func numberOfRows(in tableView: NSTableView) -> Int { display?.presentation.rowIDs.count ?? 0 }
+        func numberOfRows(in tableView: NSTableView) -> Int { display?.presentation.rowCount ?? 0 }
         func node(at row: Int) -> DiskNode? {
-            guard let display, display.presentation.rowIDs.indices.contains(row) else { return nil }
-            return display.snapshot.nodes[display.presentation.rowIDs[row]]
+            guard let display, row >= 0, row < display.presentation.rowCount else { return nil }
+            if let node = display.presentation.node(at: row) {
+                if row % 512 < 32 || row % 512 > 480 { Task { @MainActor [weak self] in self?.model.loadPage(at: row) } }
+                return node
+            }
+            Task { @MainActor [weak self] in self?.model.loadPage(at: row) }
+            return nil
         }
 
         func statusImage(_ node: DiskNode) -> NSImage? {
-            model.basket.contains(node.id) ? queuedIcon : node.issueCount > 0 ? issueIcon : nil
+            model.basket.contains(node.id) ? queuedIcon : node.state != .complete ? issueIcon : nil
         }
 
         func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -135,7 +162,7 @@ struct DirectoryTable: NSViewRepresentable {
                 cell.addSubview(field); cell.textField = field
                 NSLayoutConstraint.activate([field.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 6), field.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12), field.centerYAnchor.constraint(equalTo: cell.centerYAnchor)])
             }
-            cell.textField?.stringValue = column.identifier.rawValue == "size" ? nodeSizeLabel(node, metric: display.presentation.key.metric) : node.issueCount > 0 ? "—" : percentage(node.bytes(display.presentation.key.metric), total: display.snapshot.nodes[display.presentation.key.directoryID].bytes(display.presentation.key.metric))
+            cell.textField?.stringValue = column.identifier.rawValue == "size" ? nodeSizeLabel(node, metric: display.presentation.key.metric) : node.issueCount > 0 ? "—" : percentage(node.bytes(display.presentation.key.metric), total: display.presentation.directory.bytes(display.presentation.key.metric))
             return cell
         }
 
@@ -143,7 +170,7 @@ struct DirectoryTable: NSViewRepresentable {
             guard !updating, let table, !model.isBrowsingBusy else { return }
             model.selectedID = node(at: table.selectedRow)?.id
         }
-        func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool { !model.isBrowsingBusy }
+        func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool { !model.isBrowsingBusy && node(at: row) != nil }
         func tableView(_ tableView: NSTableView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
             guard !updating, let descriptor = tableView.sortDescriptors.first else { return }
             model.sort = descriptor.key == "name" ? (descriptor.ascending ? .nameAscending : .nameDescending) : (descriptor.ascending ? .sizeAscending : .sizeDescending)

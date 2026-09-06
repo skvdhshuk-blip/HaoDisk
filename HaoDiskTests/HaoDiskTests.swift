@@ -32,7 +32,16 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertTrue(scan.isComplete)
         let folder = try XCTUnwrap(scan.nodes.first { $0.name == "folder" })
         XCTAssertEqual(folder.logicalBytes, 1801)
-        XCTAssertEqual(folder.children.count, 2)
+        XCTAssertEqual(folder.childCount, 2)
+    }
+
+    func testAppleDoubleAndDotFilesAreIncluded() throws {
+        try file("._metadata", bytes: 233)
+        try file(".hidden", bytes: 100)
+        try file("visible", bytes: 200)
+        let scan = try DiskScanner().scan(root)
+        XCTAssertEqual(scan.root.descendantCount, 3)
+        XCTAssertEqual(scan.root.logicalBytes, 533)
     }
 
     func testSymbolicLinkNeverTraversesTargetAndHardLinksCountOnce() throws {
@@ -45,7 +54,7 @@ final class HaoDiskTests: XCTestCase {
         let regularBytes = scan.nodes.filter { $0.identity.isRegular }.reduce(0) { $0 + $1.logicalBytes }
         XCTAssertEqual(regularBytes, 8192)
         let link = try XCTUnwrap(scan.nodes.first { $0.name == "loop" })
-        XCTAssertTrue(link.children.isEmpty)
+        XCTAssertTrue(link.childCount == 0)
         XCTAssertNotNil(CleanupPolicy.reason(for: link.id, in: scan))
     }
 
@@ -59,43 +68,27 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertLessThan(scan.root.allocatedBytes, scan.root.logicalBytes)
     }
 
-    func testCancellationAndLimitAreNeverComplete() throws {
-        for n in 0..<10 { try file("\(n)", bytes: 20) }
-        let cancelled = try DiskScanner().scan(root, cancelled: { true })
-        XCTAssertTrue(cancelled.stoppedEarly)
-        XCTAssertEqual(cancelled.stopReason, .cancelled)
-        XCTAssertFalse(cancelled.isComplete)
-        let limited = try DiskScanner(maximumNodes: 4).scan(root)
-        XCTAssertEqual(limited.nodes.count, 4)
-        XCTAssertTrue(limited.stoppedEarly)
-        XCTAssertEqual(limited.stopReason, .nodeLimit(4))
-        XCTAssertEqual(limited.issueCount, 0)
-        XCTAssertNil(CleanupPolicy.reason(for: 1, in: limited))
-        var moved = false
-        let result = TrashService().move([1], in: limited) { _ in moved = true }
-        XCTAssertTrue(moved)
-        XCTAssertNil(result.first?.error)
+    func testCancellationNeverReportsAnEmptyDirectoryAsComplete() throws {
+        for n in 0..<10 { try file("folder/\(n)", bytes: 20) }
+        let scan = try DiskScanner().scan(root, cancelled: { true })
+        XCTAssertEqual(scan.stopReason, .cancelled)
+        XCTAssertFalse(scan.isComplete)
+        XCTAssertEqual(scan.root.state, .pending)
+        XCTAssertEqual(nodeSizeLabel(scan.root, metric: .logical), "未扫描")
+        XCTAssertNotNil(CleanupPolicy.reason(for: 0, in: scan))
     }
 
-    func testPartialScanChecksOnlyTheSelectedDirectoryBeforeTrash() throws {
-        for name in ["first", "second"] {
-            try file("\(name)/a", bytes: 20)
-            try file("\(name)/b", bytes: 30)
-        }
-        // One directory has been enumerated; the next directory has not.
-        let scan = try DiskScanner(maximumNodes: 5).scan(root)
-        XCTAssertTrue(scan.stoppedEarly)
-        let complete = try XCTUnwrap(scan.nodes.first { $0.parent == 0 && $0.children.count == 2 })
-        let incomplete = try XCTUnwrap(scan.nodes.first { $0.parent == 0 && $0.isDirectory && $0.children.isEmpty })
-        XCTAssertNil(CleanupPolicy.reason(for: complete.id, in: scan))
-        var moved: [URL] = []
-        let accepted = TrashService().move([complete.id], in: scan) { moved.append($0) }
-        XCTAssertNil(accepted.first?.error)
-        XCTAssertEqual(moved, [complete.url])
-        let refused = TrashService().move([incomplete.id], in: scan) { moved.append($0) }
-        XCTAssertNotNil(refused.first?.error)
-        XCTAssertEqual(moved, [complete.url])
-        XCTAssertTrue(FileManager.default.fileExists(atPath: incomplete.url.appendingPathComponent("a").path))
+    func testPartialDirectoriesAreMarkedAndCannotEnterCleanup() throws {
+        for n in 0..<10 { try file("folder/\(n)", bytes: 20) }
+        let full = try DiskScanner().scan(root)
+        let folder = try XCTUnwrap(full.nodes.first { $0.name == "folder" })
+        try full.index.rows("UPDATE nodes SET state=1,enumerated=0 WHERE id=?", [.int(Int64(folder.id))])
+        try full.index.aggregateAll(lastID: full.root.descendantCount)
+        let partial = try XCTUnwrap(full.index.node(folder.id))
+        XCTAssertEqual(partial.state, .partial)
+        XCTAssertTrue(nodeSizeLabel(partial, metric: .logical).hasPrefix("已读"))
+        XCTAssertEqual(partial.restriction, .unreadable)
+        XCTAssertEqual(try full.index.node(0)?.state, .partial)
     }
 
     func testTreemapPreservesProportionBoundsAndDoesNotOverlap() {
@@ -130,7 +123,7 @@ final class HaoDiskTests: XCTestCase {
             let weights = items.weights
             let total = weights.reduce(0) { $0 + $1.value }
             let tiles = Treemap.layout(weights, in: CGRect(origin: .zero, size: size))
-            XCTAssertEqual(Set(tiles.map(\.id)), Set(scan.root.children))
+            XCTAssertEqual(Set(tiles.map(\.id)), Set(scan.children(of: 0, metric: .logical).map(\.id)))
             for tile in tiles {
                 XCTAssertGreaterThan(tile.rect.width, 0)
                 XCTAssertGreaterThan(tile.rect.height, 0)
@@ -219,7 +212,7 @@ final class HaoDiskTests: XCTestCase {
         let scan = try DiskScanner().scan(root)
         try Data(repeating: 66, count: 75).write(to: changed)
         var called: [String] = []
-        let result = TrashService().move(Set(scan.root.children), in: scan) { called.append($0.lastPathComponent) }
+        let result = TrashService().move(Set(scan.children(of: 0, metric: .logical).map(\.id)), in: scan) { called.append($0.lastPathComponent) }
         XCTAssertEqual(called, ["okay"])
         XCTAssertNil(result.first { $0.name == "okay" }?.error)
         XCTAssertNotNil(result.first { $0.name == "changed" }?.error)

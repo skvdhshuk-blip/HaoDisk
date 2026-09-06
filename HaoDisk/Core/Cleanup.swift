@@ -1,7 +1,8 @@
 import Foundation
+import SQLite3
 
-enum CleanupRestriction: Sendable {
-    case root, unreadable, link, fileType, package, protectedContent
+enum CleanupRestriction: Int, Sendable {
+    case root = 1, unreadable, link, fileType, package, protectedContent
     var message: String {
         switch self {
         case .root: return "所选分析根目录不能加入清理。"
@@ -35,36 +36,17 @@ enum CleanupPolicy {
         return parts.contains { protectedComponents.contains($0) }
     }
 
-    static func reason(for id: Int, in snapshot: DiskSnapshot) -> String? {
-        snapshot.cleanupRestrictions[id]?.message
+    static func reason(for id: Int, in nodes: [Int: DiskNode]) -> String? {
+        guard let node = nodes[id] else { return "项目已更新，请重新选择。" }
+        return node.restriction?.message
     }
 
-    /// Scanner nodes are parent-before-child. Build once before publishing the snapshot.
-    static func index(_ nodes: [DiskNode]) -> [CleanupRestriction?] {
-        var insidePackage = [Bool](repeating: false, count: nodes.count)
-        // Drain Foundation's temporary path objects per node on large scans.
-        var protected = nodes.map { node in autoreleasepool { protectedPath(node.url) || node.isPackage } }
-        for node in nodes {
-            insidePackage[node.id] = node.isPackage || node.parent.map { insidePackage[$0] } == true
-        }
-        for node in nodes.reversed() {
-            if let parent = node.parent, protected[node.id] { protected[parent] = true }
-        }
-        return nodes.map { node in
-            if node.id == 0 { return .root }
-            if node.issueCount > 0 { return .unreadable }
-            if node.identity.isLink { return .link }
-            if !node.isDirectory && !node.identity.isRegular { return .fileType }
-            if insidePackage[node.id] { return .package }
-            return protected[node.id] ? .protectedContent : nil
-        }
-    }
-
-    static func adding(_ id: Int, to selection: Set<Int>, in snapshot: DiskSnapshot) -> Set<Int> {
-        guard reason(for: id, in: snapshot) == nil else { return selection }
-        let ancestors = Set(snapshot.ancestors(of: id).dropLast())
-        if !ancestors.isDisjoint(with: selection) { return selection }
-        return Set(selection.filter { !snapshot.ancestors(of: $0).contains(id) }).union([id])
+    static func adding(_ node: DiskNode, to selection: Set<Int>, nodes: [Int: DiskNode]) -> Set<Int> {
+        guard node.restriction == nil else { return selection }
+        // Lexical paths in loaded records avoid subtree or filesystem queries.
+        let prefix = node.url.path + "/"
+        if selection.contains(where: { id in nodes[id].map { node.url.path.hasPrefix($0.url.path + "/") } == true }) { return selection }
+        return Set(selection.filter { id in nodes[id].map { !$0.url.path.hasPrefix(prefix) } ?? false }).union([node.id])
     }
 }
 
@@ -75,55 +57,134 @@ struct TrashOutcome: Sendable {
     let error: String?
 }
 
+struct CleanupResult: Sendable {
+    let outcomes: [TrashOutcome]
+    let snapshot: DiskSnapshot
+    let updateError: String?
+}
+
 struct TrashService {
-    /// Validate again immediately before the system trash operation. Never fall back to removeItem.
+    /// One worker serializes validation, the irreversible operation, and its index update.
     func move(_ ids: Set<Int>, in snapshot: DiskSnapshot,
-              operation: (URL) throws -> Void = { url in
-                  try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-              }) -> [TrashOutcome] {
-        var results: [TrashOutcome] = []
-        for id in ids.sorted() {
-            let node = snapshot.nodes[id]
-            do {
-                if let reason = CleanupPolicy.reason(for: id, in: snapshot) { throw CleanupError.refused(reason) }
-                let resolvedRoot = snapshot.root.url.resolvingSymlinksInPath()
-                guard CleanupPolicy.isDescendant(node.url.resolvingSymlinksInPath(), of: resolvedRoot) else {
-                    throw CleanupError.refused("项目已移出授权目录，请重新扫描。")
+              operation: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) -> CleanupResult {
+        snapshot.index.access {
+            let index = snapshot.index
+            var results: [TrashOutcome] = []
+            var updateError: String?
+            for id in ids.sorted() {
+                do {
+                    guard index.usable else { throw CleanupError.refused("分析结果已失效，请重新扫描。") }
+                    guard let node = try index.node(id) else { continue }
+                    do {
+                        if let reason = node.restriction?.message { throw CleanupError.refused(reason) }
+                        try validate(node, index: index)
+                        try operation(node.url)
+                    } catch {
+                        results.append(TrashOutcome(id: id, name: node.name, url: node.url, error: error.localizedDescription))
+                        continue
+                    }
+                    results.append(TrashOutcome(id: id, name: node.name, url: node.url, error: nil))
+                    do { try index.removeTrashed(node) }
+                    catch {
+                        index.usable = false
+                        updateError = "清理已完成，分析更新失败。请重新扫描后继续清理。\n\(error.localizedDescription)"
+                    }
+                } catch {
+                    updateError = updateError ?? error.localizedDescription
+                    break
                 }
-                // Check the root and every ancestor, preventing a replaced parent from redirecting a deletion.
-                for ancestor in snapshot.ancestors(of: id) {
-                    let original = snapshot.nodes[ancestor]
-                    let (current, _) = try FileIdentity.read(original.url)
-                    guard current.device == original.identity.device, current.inode == original.identity.inode,
-                          current.mode == original.identity.mode else {
-                        throw CleanupError.refused("路径已改变，请重新扫描。")
-                    }
-                }
-                let (current, _) = try FileIdentity.read(node.url)
-                guard current == node.identity else { throw CleanupError.refused("项目在扫描后发生变化，请重新扫描。") }
-                if node.isDirectory {
-                    let fresh = try DiskScanner().scan(node.url)
-                    var original: [String: FileIdentity] = [:]
-                    var pending = [id]
-                    while let next = pending.popLast() {
-                        original[snapshot.nodes[next].url.path] = snapshot.nodes[next].identity
-                        pending.append(contentsOf: snapshot.nodes[next].children)
-                    }
-                    guard fresh.isComplete else {
-                        throw CleanupError.refused("无法完整核对所选文件夹，请检查权限或选择更小的目录。")
-                    }
-                    guard fresh.nodes.count == original.count,
-                          fresh.nodes.allSatisfy({ original[$0.url.path] == $0.identity }) else {
-                        throw CleanupError.refused("文件夹内容未完整读取或已发生变化，请选择它的上级目录重新扫描。")
-                    }
-                }
-                try operation(node.url)
-                results.append(TrashOutcome(id: id, name: node.name, url: node.url, error: nil))
-            } catch {
-                results.append(TrashOutcome(id: id, name: node.name, url: node.url, error: error.localizedDescription))
+            }
+            let root = (try? index.node(0)) ?? snapshot.root
+            let capacity = VolumeCapacity.read(at: root.url)
+            return CleanupResult(outcomes: results,
+                snapshot: DiskSnapshot(index: index, root: root, issues: snapshot.issues, stopReason: snapshot.stopReason, elapsed: snapshot.elapsed, totalCapacity: capacity.total, availableCapacity: capacity.available), updateError: updateError)
+        }
+    }
+
+    private func validate(_ node: DiskNode, index: ScanIndex) throws {
+        let ancestors = try index.ancestors(node.id)
+        guard let root = ancestors.first,
+              CleanupPolicy.isDescendant(node.url.resolvingSymlinksInPath(), of: root.url.resolvingSymlinksInPath()) else {
+            throw CleanupError.refused("项目已移出授权目录，请重新扫描。")
+        }
+        for ancestor in ancestors {
+            let (current, _) = try FileIdentity.read(ancestor.url)
+            guard current.device == ancestor.identity.device, current.inode == ancestor.identity.inode, current.mode == ancestor.identity.mode else {
+                throw CleanupError.refused("路径已改变，请重新扫描。")
             }
         }
-        return results
+        guard try FileIdentity.read(node.url).0 == node.identity else { throw CleanupError.refused("项目在扫描后发生变化，请重新扫描。") }
+        if node.isDirectory {
+            var count = 0
+            try index.rows("""
+            WITH RECURSIVE folders(id) AS (SELECT ? UNION ALL SELECT n.id FROM nodes n JOIN folders f ON n.parent=f.id WHERE (n.mode & 61440)=16384)
+            SELECT n.* FROM nodes n JOIN folders f ON n.id=f.id
+            """, [.int(Int64(node.id))]) { statement in
+                try autoreleasepool {
+                    let folder = ScanIndex.decode(statement)
+                    guard try FileIdentity.read(folder.url).0 == folder.identity else { throw CleanupError.refused("文件夹内容已发生变化，请重新扫描。") }
+                    let reader = try DiskDirectoryReader(folder.url)
+                    var directCount = 0
+                    while true {
+                        let more = try autoreleasepool { () throws -> Bool in
+                            guard let url = try reader.next() else { return false }
+                            let identity = try FileIdentity.read(url).0
+                            guard let original = try index.node(path: url.path), original.parent == folder.id,
+                                  original.identity == identity, identity.device == root.identity.device else {
+                                throw CleanupError.refused("文件夹内容已发生变化，请重新扫描。")
+                            }
+                            directCount += 1
+                            return true
+                        }
+                        if !more { break }
+                    }
+                    guard directCount == folder.childCount, try FileIdentity.read(folder.url).0 == folder.identity else {
+                        throw CleanupError.refused("无法完整核对文件夹，或内容已发生变化，请重新扫描。")
+                    }
+                    count += directCount
+                }
+            }
+            guard count == node.descendantCount else { throw CleanupError.refused("文件夹内容未完整读取，请重新扫描。") }
+        }
+    }
+}
+
+extension ScanIndex {
+    func removeTrashed(_ node: DiskNode) throws {
+        try transaction {
+            try execute("CREATE TEMP TABLE IF NOT EXISTS removed(id INTEGER PRIMARY KEY); DELETE FROM removed;")
+            try rows("INSERT INTO removed WITH RECURSIVE tree(id) AS (SELECT ? UNION ALL SELECT n.id FROM nodes n JOIN tree t ON n.parent=t.id) SELECT id FROM tree", [.int(Int64(node.id))])
+            var affected = Set(try ancestors(node.id).dropLast().map(\.id))
+            // Only deleted hard-link owners with surviving aliases need reassignment.
+            var cursor = -1
+            while true {
+                var owners: [(Int, Int64, Int64, Int64, Int64)] = []
+                try rows("SELECT id,device,inode,ownLogical,ownAllocated FROM nodes WHERE id>? AND id IN removed AND duplicate=0 AND (mode & 61440)=32768 AND EXISTS(SELECT 1 FROM nodes a WHERE a.device=nodes.device AND a.inode=nodes.inode AND a.id NOT IN removed) ORDER BY id LIMIT 512", [.int(Int64(cursor))]) {
+                    owners.append((Int(sqlite3_column_int64($0,0)), sqlite3_column_int64($0,1), sqlite3_column_int64($0,2), sqlite3_column_int64($0,3), sqlite3_column_int64($0,4)))
+                }
+                guard !owners.isEmpty else { break }
+                for (id, device, inode, logical, allocated) in owners {
+                    cursor = id
+                    let survivor = Int(try integer("SELECT id FROM nodes WHERE device=? AND inode=? AND id NOT IN removed ORDER BY id LIMIT 1", [.int(device), .int(inode)]))
+                    try rows("UPDATE nodes SET duplicate=0,logical=?,allocated=?,revision=revision+1 WHERE id=?", [.int(logical), .int(allocated), .int(Int64(survivor))])
+                    affected.formUnion(try ancestors(survivor).dropLast().map(\.id))
+                }
+            }
+            try execute("DELETE FROM ordering WHERE directory IN removed; DELETE FROM nodes WHERE id IN removed;")
+            if let parentID = node.parent, let parent = try self.node(parentID) {
+                let identity = try FileIdentity.read(parent.url).0
+                guard identity.device == parent.identity.device, identity.inode == parent.identity.inode, identity.mode == parent.identity.mode else {
+                    throw CleanupError.refused("父目录已改变，请重新扫描。")
+                }
+                try rows("UPDATE nodes SET size=?,sec=?,nano=? WHERE id=?", [.int(identity.size), .int(Int64(identity.modifiedSeconds)), .int(Int64(identity.modifiedNanos)), .int(Int64(parentID))])
+            }
+            for id in affected.sorted(by: >) {
+                try aggregate(id)
+                try rows("UPDATE nodes SET revision=revision+1 WHERE id=?", [.int(Int64(id))])
+                try rows("DELETE FROM ordering WHERE directory=?", [.int(Int64(id))])
+            }
+            try execute("DELETE FROM removed")
+        }
     }
 }
 

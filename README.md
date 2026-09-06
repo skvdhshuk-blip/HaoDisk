@@ -6,7 +6,7 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 
 ![HaoDisk 0.2.2 实际运行界面，扫描自建样本目录](docs/images/capacity-light.png)
 
-0.2.3 商业化候选版：后台目录准备、有上限的浏览缓存、局部刷新和容量面积图。当前完成本地签名沙箱验收，尚未提交 App Store。
+0.2.4 商业化候选版：无项目数量上限的完整扫描、SQLite 临时索引、分页浏览和清理后局部更新。当前完成本地签名沙箱验收，尚未提交 App Store。
 
 ## 功能
 
@@ -14,10 +14,10 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 - 顶部常驻所选目录所在磁盘的可用空间与总容量，授权后即可读取，不必等待目录扫描完成。
 - 面积图直接显示名称和容量；小块优先显示容量，保留真实比例。最多 80 个独立块，超出部分显示汇总容量并可进入列表。
 - 切换磁盘占用空间与逻辑文件大小，方块面积和容量同步更新；占比可在悬停、简介与完整表格中查看。
-- 后台扫描、实时进度、可取消、隐藏文件、硬链接去重和读取问题清单；同一目录重扫保留浏览位置、选择与有效清单。
-- 目录排序在后台准备，最多缓存 16 个目录 / 500,000 行索引；原生列表复用可见行，方块悬停不重复排序和计算整图布局。
+- 后台扫描、实时进度、可取消、隐藏文件（含 `._` 文件）、硬链接去重和读取问题清单；同一目录重扫保留浏览位置、选择与有效清单。
+- 目录排序在后台准备，按 512 行分页并预取相邻页；最多缓存 16 个目录 / 500,000 行，每个目录最多保留 8 页。原生列表复用可见行，方块悬停不重复排序和计算整图布局。
 - 系统目录选择器授权；保存最近一个目录的授权，重启后可继续，随时忘记。
-- 手动待清理清单、父子项去重、清理前文件与路径身份检查、文件夹内容复核、逐项结果反馈和自动重扫。
+- 手动待清理清单、父子项去重、清理前文件与路径身份检查、文件夹内容复核、逐项结果反馈；成功清理只更新受影响目录及祖先，不自动重扫授权根目录。
 - 原生深浅色外观、系统字体、键盘菜单、面积图辅助功能标签；不依赖 WebView。
 
 ## 在 Xcode 中运行
@@ -53,7 +53,9 @@ xcodebuild -project HaoDisk.xcodeproj -scheme HaoDisk \
 | APFS 克隆、快照、共享块 | 不声称能够精确计算实际可释放空间 |
 | 云端占位文件 | 读取文件系统元数据，不读取正文、不主动下载 |
 | 无权限目录、其他挂载卷 | 标记扫描不完整，提供详情；其他卷可单独选择 |
-| 取消 / 达到 500,000 项上限 | 显示部分结果；已读项目可审阅，文件夹须完整重扫且身份与原记录一致后才能移动 |
+| 扫描取消 / 无法完整读取 | 目录显示“未扫描”或“已读”；不完整项目不能加入清理，完整文件夹仍需逐项复核 |
+| 大目录 | 无扫描数量上限；节点存入当前会话的 SQLite 临时索引，界面按需加载 |
+| 外部文件变化 | 手动重扫同步；本轮未引入文件监听或跨启动索引复用 |
 | 系统目录、Library、应用 / 资料包 | 可在系统允许时分析，禁止清理这些项目及包含它们的目录 |
 | 移到废纸篓失败 | 保留失败信息；不会降级为永久删除 |
 
@@ -73,4 +75,4 @@ docs/             计划、验证记录、App Store 准备
 
 当前界面语言为简体中文。无账号、联网权限、遥测、第三方 SDK 或运行时依赖。
 
-[0.2.3 浏览性能对比与验收](docs/BROWSING_PERFORMANCE.md) · [0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
+[0.2.4 完整扫描与局部更新验收](docs/COMPLETE_SCAN_AND_INCREMENTAL.md) · [0.2.3 浏览性能对比与验收](docs/BROWSING_PERFORMANCE.md) · [0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)

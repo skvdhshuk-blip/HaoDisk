@@ -45,14 +45,17 @@ struct DiskNode: Identifiable, Sendable {
     let id: Int
     let url: URL
     let parent: Int?
-    let identity: FileIdentity
+    var identity: FileIdentity
     let isPackage: Bool
-    var children: [Int] = []
     var logicalBytes: Int64 = 0
     var allocatedBytes: Int64 = 0
     var descendantCount = 0
+    var childCount = 0
     var issueCount = 0
     var isHardLinkDuplicate = false
+    var state: NodeScanState = .complete
+    var restriction: CleanupRestriction?
+    var revision = 0
 
     var name: String { url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent }
     var isDirectory: Bool { identity.isDirectory }
@@ -83,167 +86,118 @@ struct VolumeCapacity: Equatable, Sendable {
     }
 }
 
+enum NodeScanState: Int, Sendable { case pending, scanning, complete, partial }
+
 enum ScanStopReason: Equatable, Sendable {
     case cancelled
-    case nodeLimit(Int)
-
-    var title: String {
-        switch self {
-        case .cancelled: return "扫描已停止"
-        case .nodeLimit: return "已达扫描上限"
-        }
-    }
-
-    var explanation: String {
-        switch self {
-        case .cancelled: return "当前仅显示停止前已读取的内容。可重新扫描以补全结果。"
-        case .nodeLimit(let limit): return "已读取 \(limit.formatted()) 个项目。要补全结果，请选择待清理项目的较小上级目录重新分析。"
-        }
-    }
+    var title: String { "扫描已停止" }
+    var explanation: String { "当前仅显示停止前已读取的内容。可重新扫描以补全结果。" }
 }
 
+/// A small immutable summary. Node records live in the index, never in this snapshot.
 struct DiskSnapshot: Sendable {
-    let version = UUID()
-    let nodes: [DiskNode]
-    let cleanupRestrictions: [CleanupRestriction?]
+    let index: ScanIndex
+    let root: DiskNode
     let issues: [ScanIssue]
-    let issueCount: Int
     let stopReason: ScanStopReason?
     let elapsed: TimeInterval
     let totalCapacity: Int64?
     let availableCapacity: Int64?
-
-    init(nodes: [DiskNode], issues: [ScanIssue], issueCount: Int, stopReason: ScanStopReason?,
-         elapsed: TimeInterval, totalCapacity: Int64?, availableCapacity: Int64?) {
-        self.nodes = nodes
-        self.cleanupRestrictions = CleanupPolicy.index(nodes)
-        self.issues = issues
-        self.issueCount = issueCount
-        self.stopReason = stopReason
-        self.elapsed = elapsed
-        self.totalCapacity = totalCapacity
-        self.availableCapacity = availableCapacity
-    }
-    var root: DiskNode { nodes[0] }
+    var version: UUID { index.session }
+    var issueCount: Int { root.issueCount }
     var stoppedEarly: Bool { stopReason != nil }
-    var isComplete: Bool { !stoppedEarly && issueCount == 0 }
-
-    func children(of id: Int, metric: SizeMetric, sort: DirectorySort = .sizeDescending) -> [DiskNode] {
-        nodes[id].children.map { nodes[$0] }.sorted {
-            if !sort.byName, $0.bytes(metric) != $1.bytes(metric) {
-                return sort.ascending ? $0.bytes(metric) < $1.bytes(metric) : $0.bytes(metric) > $1.bytes(metric)
-            }
-            let order = $0.name.localizedStandardCompare($1.name)
-            return sort == .nameDescending ? order == .orderedDescending : order == .orderedAscending
-        }
-    }
-
-    func ancestors(of id: Int) -> [Int] {
-        var result = [id]
-        var parent = nodes[id].parent
-        while let value = parent {
-            result.append(value)
-            parent = nodes[value].parent
-        }
-        return result.reversed()
-    }
+    var isComplete: Bool { root.state == .complete && issueCount == 0 }
 }
 
-/// One worker owns all mutable scan state. Nothing reads file contents.
 struct DiskScanner: Sendable {
-    let maximumNodes: Int
-    init(maximumNodes: Int = 500_000) { self.maximumNodes = max(1, maximumNodes) }
-
     func scan(_ requestedRoot: URL,
               cancelled: @Sendable () -> Bool = { false },
               progress: @Sendable (ScanProgress) -> Void = { _ in }) throws -> DiskSnapshot {
         let started = Date()
         let root = requestedRoot.resolvingSymlinksInPath().standardizedFileURL
-        let (rootIdentity, _) = try FileIdentity.read(root)
-        guard rootIdentity.isDirectory else { throw ScanError.notDirectory }
-        let manager = FileManager()
-        let keys: [URLResourceKey] = [.isPackageKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey]
-        var nodes = [DiskNode(id: 0, url: root, parent: nil, identity: rootIdentity,
-                              isPackage: (try? root.resourceValues(forKeys: [.isPackageKey]).isPackage) == true)]
-        var directories = [root.path: 0]
-        var identities = Set<String>()
-        var issues: [ScanIssue] = []
-        var issueCount = 0
-        var stopReason: ScanStopReason?
-        var allocated: Int64 = 0
-        var lastProgress = Date.distantPast
-
-        func record(_ url: URL, _ message: String, at node: Int) {
-            issueCount += 1
-            nodes[node].issueCount += 1
-            if issues.count < 100 { issues.append(ScanIssue(id: issueCount, path: url.path, message: message)) }
-        }
-
-        guard let enumerator = manager.enumerator(at: root, includingPropertiesForKeys: keys,
-                                                  options: [], errorHandler: { url, error in
-            let owner = directories[url.path] ?? directories[url.deletingLastPathComponent().path] ?? 0
-            record(url, error.localizedDescription, at: owner)
-            return true
-        }) else { throw ScanError.unreadable }
-
-        while true {
-            if cancelled() { stopReason = .cancelled; break }
-            guard let url = enumerator.nextObject() as? URL else { break }
-            if nodes.count >= maximumNodes {
-                stopReason = .nodeLimit(maximumNodes)
-                break
-            }
-            let parent = directories[url.deletingLastPathComponent().path] ?? 0
+        let (identity, _) = try FileIdentity.read(root)
+        guard identity.isDirectory else { throw ScanError.notDirectory }
+        let index = try ScanIndex()
+        return try index.access {
+            let package = (try? root.resourceValues(forKeys: [.isPackageKey]).isPackage) == true
+            let rootNode = DiskNode(id: 0, url: root, parent: nil, identity: identity, isPackage: package, state: .pending)
+            try index.insert(rootNode, ownLogical: 0, ownAllocated: 0, insidePackage: package, protected: package || CleanupPolicy.protectedPath(root))
+            var lastID = 0
+            var issues: [ScanIssue] = []
+            var allocated: Int64 = 0
+            var lastProgress = Date.distantPast
+            var stopped: ScanStopReason?
+            let keys: [URLResourceKey] = [.isPackageKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey]
+            try index.execute("BEGIN IMMEDIATE")
             do {
-                let (identity, blocks) = try FileIdentity.read(url)
-                let values = try url.resourceValues(forKeys: Set(keys))
-                var node = DiskNode(id: nodes.count, url: url, parent: parent,
-                                    identity: identity, isPackage: values.isPackage == true)
-                if identity.device != rootIdentity.device {
-                    enumerator.skipDescendants()
-                    node.issueCount = 1
-                    issueCount += 1
-                    if issues.count < 100 {
-                        issues.append(ScanIssue(id: issueCount, path: url.path, message: "跳过其他挂载卷，请单独选择该卷。"))
+                var cursor = -1
+                while true {
+                    if cancelled() { stopped = .cancelled; break }
+                    let found = try autoreleasepool { () throws -> Bool in
+                        var pending: DiskNode?
+                        try index.rows("SELECT * FROM nodes WHERE id>? AND state=0 ORDER BY id LIMIT 1", [.int(Int64(cursor))]) { pending = ScanIndex.decode($0) }
+                        guard let directory = pending else { return false }
+                        cursor = directory.id
+                        try index.rows("UPDATE nodes SET state=1 WHERE id=?", [.int(Int64(directory.id))])
+                        let parentPackage = try index.integer("SELECT insidePackage FROM nodes WHERE id=?", [.int(Int64(directory.id))]) != 0
+                        var enumerationError: Error?
+                        do {
+                            let enumerator = try DiskDirectoryReader(directory.url)
+                            while true {
+                                let more = try autoreleasepool { () throws -> Bool in
+                                    if cancelled() { stopped = .cancelled; return false }
+                                    guard let url = try enumerator.next() else { return false }
+                                    do {
+                                        let (itemIdentity, blocks) = try FileIdentity.read(url)
+                                        let values = try url.resourceValues(forKeys: Set(keys))
+                                        lastID += 1
+                                        let isPackage = values.isPackage == true
+                                        var node = DiskNode(id: lastID, url: url, parent: directory.id, identity: itemIdentity, isPackage: isPackage,
+                                                            state: itemIdentity.isDirectory ? .pending : .complete)
+                                        if itemIdentity.device != identity.device { node.state = .partial; node.issueCount = 1 }
+                                        let inside = parentPackage || isPackage
+                                        let logical = itemIdentity.isRegular || itemIdentity.isLink ? max(0, itemIdentity.size) : 0
+                                        let bytes = itemIdentity.isLink ? max(0, blocks) : itemIdentity.isRegular ? max(0, Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? Int(blocks))) : 0
+                                        let duplicate = try index.insert(node, ownLogical: logical, ownAllocated: bytes, insidePackage: inside, protected: isPackage || CleanupPolicy.protectedPath(url))
+                                        if !duplicate { allocated += bytes }
+                                        if node.issueCount > 0, issues.count < 100 { issues.append(ScanIssue(id: issues.count, path: url.path, message: "跳过其他挂载卷，请单独选择该卷。")) }
+                                    } catch let error as NSError where error.domain == NSPOSIXErrorDomain || error.domain == NSCocoaErrorDomain {
+                                        try index.rows("UPDATE nodes SET ownIssues=ownIssues+1 WHERE id=?", [.int(Int64(directory.id))])
+                                        if issues.count < 100 { issues.append(ScanIssue(id: issues.count, path: url.path, message: error.localizedDescription)) }
+                                    }
+                                    return true
+                                }
+                                if !more { break }
+                                if lastID % 1024 == 0 { try index.execute("COMMIT; BEGIN IMMEDIATE") }
+                                if Date().timeIntervalSince(lastProgress) >= 0.2 {
+                                    lastProgress = Date()
+                                    progress(ScanProgress(count: lastID, bytes: allocated, folder: directory.name))
+                                }
+                            }
+                        } catch let error as NSError where error.domain == NSPOSIXErrorDomain || error.domain == NSCocoaErrorDomain {
+                            enumerationError = error
+                        }
+                        if let enumerationError {
+                            try index.rows("UPDATE nodes SET ownIssues=ownIssues+1 WHERE id=?", [.int(Int64(directory.id))])
+                            if issues.count < 100 { issues.append(ScanIssue(id: issues.count, path: directory.url.path, message: enumerationError.localizedDescription)) }
+                        }
+                        if stopped != nil { return false }
+                        try index.rows("UPDATE nodes SET enumerated=1 WHERE id=?", [.int(Int64(directory.id))])
+                        return true
                     }
-                } else if identity.isDirectory {
-                    directories[url.path] = node.id
-                } else if identity.isRegular || identity.isLink {
-                    if identity.isLink { enumerator.skipDescendants() }
-                    let duplicate = identity.isRegular && !identities.insert(identity.key).inserted
-                    node.isHardLinkDuplicate = duplicate
-                    if !duplicate {
-                        node.logicalBytes = max(0, identity.size)
-                        // Foundation accounts for compressed/sparse files; stat is the metadata fallback.
-                        node.allocatedBytes = identity.isLink ? max(0, blocks) : max(0, Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? Int(blocks)))
-                        allocated += node.allocatedBytes
-                    }
+                    if !found { break }
                 }
-                nodes[parent].children.append(node.id)
-                nodes.append(node)
+                progress(ScanProgress(count: lastID, bytes: allocated, folder: "整理统计结果"))
+                try index.aggregateAll(lastID: lastID)
+                try index.execute("COMMIT")
             } catch {
-                enumerator.skipDescendants()
-                record(url, error.localizedDescription, at: parent)
+                try? index.execute("ROLLBACK")
+                throw CleanupError.refused("扫描未完成。\(error.localizedDescription)")
             }
-            if Date().timeIntervalSince(lastProgress) >= 0.2 {
-                lastProgress = Date()
-                progress(ScanProgress(count: nodes.count - 1, bytes: allocated, folder: url.deletingLastPathComponent().lastPathComponent))
-            }
+            let capacity = VolumeCapacity.read(at: root)
+            guard let completeRoot = try index.node(0) else { throw ScanError.unreadable }
+            return DiskSnapshot(index: index, root: completeRoot, issues: issues, stopReason: stopped, elapsed: Date().timeIntervalSince(started), totalCapacity: capacity.total, availableCapacity: capacity.available)
         }
-        if nodes.count > 1 {
-            for id in stride(from: nodes.count - 1, through: 1, by: -1) {
-                guard let parent = nodes[id].parent else { continue }
-                nodes[parent].allocatedBytes += nodes[id].allocatedBytes
-                nodes[parent].logicalBytes += nodes[id].logicalBytes
-                nodes[parent].descendantCount += nodes[id].descendantCount + 1
-                nodes[parent].issueCount += nodes[id].issueCount
-            }
-        }
-        let capacity = VolumeCapacity.read(at: root)
-        return DiskSnapshot(nodes: nodes, issues: issues, issueCount: issueCount, stopReason: stopReason,
-                            elapsed: Date().timeIntervalSince(started),
-                            totalCapacity: capacity.total,
-                            availableCapacity: capacity.available)
     }
 }
 
@@ -253,6 +207,33 @@ enum ScanError: LocalizedError {
         switch self {
         case .notDirectory: return "请选择文件夹。"
         case .unreadable: return "无法读取这个文件夹，请重新选择并授权。"
+        }
+    }
+}
+
+/// FileManager enumerators silently omit AppleDouble (._) entries. Read directory entries directly.
+final class DiskDirectoryReader {
+    private let handle: UnsafeMutablePointer<DIR>
+    private let directory: URL
+    init(_ directory: URL) throws {
+        self.directory = directory
+        guard let handle = directory.withUnsafeFileSystemRepresentation({ opendir($0!) }) else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        self.handle = handle
+    }
+    deinit { closedir(handle) }
+    func next() throws -> URL? {
+        while true {
+            errno = 0
+            guard let entry = readdir(handle) else {
+                if errno != 0 { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+                return nil
+            }
+            let name = withUnsafePointer(to: &entry.pointee.d_name) {
+                $0.withMemoryRebound(to: CChar.self, capacity: 1024) { String(cString: $0) }
+            }
+            if name != "." && name != ".." { return directory.appendingPathComponent(name) }
         }
     }
 }

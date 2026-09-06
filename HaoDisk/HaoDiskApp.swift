@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct HaoDiskApp: App {
+    @NSApplicationDelegateAdaptor(HaoDiskDelegate.self) private var delegate
     @StateObject private var model = DiskModel()
 
     var body: some Scene {
@@ -37,4 +38,8 @@ struct HaoDiskApp: App {
             }
         }
     }
+}
+
+private final class HaoDiskDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) { ScanIndex.removeCurrentProcessIndexes() }
 }
