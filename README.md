@@ -1,12 +1,31 @@
 # HaoDisk
 
-A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and Foundation.
+原生 macOS 磁盘空间分析与清理工具，使用 Swift、SwiftUI、AppKit 和系统 SQLite3 开发。
 
 把空间，看明白。按文件夹查看大小和面积占比，逐层找到占空间的项目，检查后移到系统废纸篓。
 
-![HaoDisk 0.2.2 实际运行界面，扫描自建样本目录](docs/images/capacity-light.png)
+[官方网站](https://skvdhshuk-blip.github.io/HaoDisk/) · [下载 Release](https://github.com/skvdhshuk-blip/HaoDisk/releases/latest) · [帮助与支持](https://skvdhshuk-blip.github.io/HaoDisk/support.html) · [隐私政策](https://skvdhshuk-blip.github.io/HaoDisk/privacy.html)
 
-0.2.4 商业化候选版：无项目数量上限的完整扫描、SQLite 临时索引、分页浏览和清理后局部更新。当前完成本地签名沙箱验收，尚未提交 App Store。
+![HaoDisk 0.2.4 实际运行界面，扫描自建演示目录](site/assets/app.jpg)
+
+## 下载与版本
+
+**最新版本：0.2.4（构建 6）**，支持 macOS 14 及以上，提供 Apple 芯片与 Intel 通用应用。免费、无广告、无内购，当前界面为简体中文。
+
+| 渠道 | 状态 |
+| --- | --- |
+| [GitHub Release v0.2.4](https://github.com/skvdhshuk-blip/HaoDisk/releases/tag/v0.2.4) | 提供源码和开发签名 ZIP；尚未公证，macOS Gatekeeper 可能阻止打开 |
+| Mac App Store | 2026-09-06 已提交 0.2.4（6），等待 Apple 审核；通过后自动发布，首发不含欧盟 |
+| 自行构建 | 使用 Xcode 打开工程并选择自己的开发者 Team，步骤见下方 |
+
+ZIP 内为 `HaoDisk.app`。Release 附带 `SHA256SUMS.txt` 和构建说明，可用 `shasum -a 256 -c SHA256SUMS.txt` 校验下载内容。开发签名包不等同于经过 Developer ID 签名和 Apple 公证的公开分发包；普通用户可等待 Mac App Store 版本。
+
+## 0.2.4 更新
+
+- **完整扫描**：取消 50 万项目的扫描硬上限，使用当前会话的 SQLite 临时索引，按需加载数据。
+- **流畅浏览**：后台排序、分页与缓存，减少点击、滚动和方块悬停时的重复计算。
+- **局部更新**：清理成功后仅更新受影响目录及祖先，保留浏览位置，无需重新扫描整个授权目录。
+- **容量一眼可见**：顶部显示磁盘可用／总容量，方块优先显示名称与容量，保留小项目的真实面积比例。
 
 ## 功能
 
