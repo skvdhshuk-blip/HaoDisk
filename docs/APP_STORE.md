@@ -1,6 +1,6 @@
 # Mac App Store 准备
 
-0.2.4（构建 6）已于 2026-09-06 完成正式归档、App Store 分发签名和上传，Apple 已处理构建。当前仍为“准备提交”：审核联系电话和邮箱缺失，阻止保存版本资料。尚未提交审核或上架。
+0.2.4（构建 6）已于 2026-09-06 完成正式归档、App Store 分发签名和上传，Apple 已处理构建。已于当日 19:52（Asia/Shanghai）提交审核，Apple 当前状态为“等待审核”。审核通过后自动发布，尚未上架。
 
 ## 权限设计
 
@@ -59,14 +59,15 @@ App Privacy 问卷按当前实现应选择“不收集数据”。发布前根�
 | 出口合规 | 已回答不使用问卷列出的加密算法 |
 | 截图 | 已上传 2560 × 1600 原生应用截图，内容为自建演示目录 |
 | 发布方式 | 审核通过后自动发布 |
-| 待完成 | 补齐审核电话和邮箱，保存构建关联及版本资料，完成最终提交校验并提交 |
+| 审核 | 2026-09-06 19:52 已提交，等待审核 |
+| 提交 ID | `6de69278-abe1-48d7-9c63-9cb174d77bfe` |
 
 - [主页](https://skvdhshuk-blip.github.io/HaoDisk/)
 - [隐私政策](https://skvdhshuk-blip.github.io/HaoDisk/privacy.html)
 - [支持页面](https://skvdhshuk-blip.github.io/HaoDisk/support.html)
 - [App Store Connect](https://appstoreconnect.apple.com/apps/6809158350/distribution)
 
-审核联系人沿用现有应用的 Hao Wang；现有两个应用的电话和邮箱为空，因此需要用户补充。这些资料只提交 Apple，不存入仓库或公开主页。
+审核联系人姓名沿用 Hao Wang，电话和邮箱由用户补充，已保存并通过提交校验。这些资料只提交 Apple，不存入仓库或公开主页。
 
 本地沙箱应用的功能验证见 0.2.4 验证报告。正式上传成功不等于 TestFlight 真机复验、Intel 实机验证或 Apple 审核通过；这些状态分别记录，不能互相替代。
 
