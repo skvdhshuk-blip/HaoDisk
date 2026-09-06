@@ -7,6 +7,16 @@ enum SizeMetric: String, CaseIterable, Identifiable, Sendable {
     var id: Self { self }
 }
 
+enum DirectorySort: String, CaseIterable, Identifiable, Sendable {
+    case sizeDescending = "大小：从大到小"
+    case sizeAscending = "大小：从小到大"
+    case nameAscending = "名称：升序"
+    case nameDescending = "名称：降序"
+    var id: Self { self }
+    var byName: Bool { self == .nameAscending || self == .nameDescending }
+    var ascending: Bool { self == .sizeAscending || self == .nameAscending }
+}
+
 struct FileIdentity: Equatable, Sendable {
     let device: Int32
     let inode: UInt64
@@ -73,10 +83,13 @@ struct DiskSnapshot: Sendable {
     var root: DiskNode { nodes[0] }
     var isComplete: Bool { !stoppedEarly && issueCount == 0 }
 
-    func children(of id: Int, metric: SizeMetric) -> [DiskNode] {
+    func children(of id: Int, metric: SizeMetric, sort: DirectorySort = .sizeDescending) -> [DiskNode] {
         nodes[id].children.map { nodes[$0] }.sorted {
-            if $0.bytes(metric) != $1.bytes(metric) { return $0.bytes(metric) > $1.bytes(metric) }
-            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            if !sort.byName, $0.bytes(metric) != $1.bytes(metric) {
+                return sort.ascending ? $0.bytes(metric) < $1.bytes(metric) : $0.bytes(metric) > $1.bytes(metric)
+            }
+            let order = $0.name.localizedStandardCompare($1.name)
+            return sort == .nameDescending ? order == .orderedDescending : order == .orderedAscending
         }
     }
 

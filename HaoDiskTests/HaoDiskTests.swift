@@ -191,4 +191,48 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertGreaterThan(blocked.issueCount, 0)
         XCTAssertNotNil(CleanupPolicy.reason(for: blocked.id, in: scan))
     }
+
+    func testAllDirectorySortOrders() throws {
+        try file("file2", bytes: 100)
+        try file("file10", bytes: 200)
+        try file("Alpha", bytes: 1000)
+        let scan = try DiskScanner().scan(root)
+        XCTAssertEqual(scan.children(of: 0, metric: .logical, sort: .sizeDescending).map(\.name), ["Alpha", "file10", "file2"])
+        XCTAssertEqual(scan.children(of: 0, metric: .logical, sort: .sizeAscending).map(\.name), ["file2", "file10", "Alpha"])
+        XCTAssertEqual(scan.children(of: 0, metric: .logical, sort: .nameAscending).map(\.name), ["Alpha", "file2", "file10"])
+        XCTAssertEqual(scan.children(of: 0, metric: .logical, sort: .nameDescending).map(\.name), ["file10", "file2", "Alpha"])
+    }
+
+    #if !SWIFT_PACKAGE
+    @MainActor func testNavigationSelectionSortAndCleanupReview() async throws {
+        try file("folder/a", bytes: 50)
+        try file("z-file", bytes: 20)
+        let scan = try DiskScanner().scan(root)
+        let model = DiskModel()
+        model.snapshot = scan
+        model.currentID = 0
+        model.metric = .logical
+        model.selectOffset(1)
+        XCTAssertEqual(model.selected?.name, "folder")
+        model.openSelected()
+        XCTAssertEqual(model.current?.name, "folder")
+        XCTAssertTrue(model.canGoBack)
+        model.selectOffset(1)
+        XCTAssertEqual(model.selected?.name, "a")
+        model.reviewSelected()
+        XCTAssertTrue(model.showReview)
+        XCTAssertEqual(model.basketNodes.map(\.name), ["a"])
+        model.showReview = false
+        model.back()
+        XCTAssertEqual(model.currentID, 0)
+        model.forward()
+        XCTAssertEqual(model.current?.name, "folder")
+        model.up()
+        model.sort = .nameDescending
+        XCTAssertEqual(model.children.map(\.name), ["z-file", "folder"])
+        model.isScanning = true
+        model.selectOffset(1)
+        XCTAssertNil(model.selectedID)
+    }
+    #endif
 }

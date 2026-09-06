@@ -15,9 +15,11 @@
 		623EF2964582B339AB91E699 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CAC0BA4D03F15F082966EA71 /* PrivacyInfo.xcprivacy */; };
 		63866FA1B3E9ED1D223B2D30 /* HaoDiskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21DC82AFF81142D68FE01131 /* HaoDiskApp.swift */; };
 		641FBF2D9E4FCBEB1AAD4239 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85F12661E1CA7807B1FD83F /* ContentView.swift */; };
+		6C1B4FC918BDFE090B0C6BF1 /* DiskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822CA554A8834BEFA6DF800F /* DiskModel.swift */; };
 		6F65B368DE0AF191B750FB04 /* HaoDiskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */; };
 		913297E509E878D9CC86A5A9 /* Treemap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0532F1A5A5B44DD0ADC32956 /* Treemap.swift */; };
 		97159BA60D5FECACC2949311 /* CleanupReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349FBF9C8410369F44AB871B /* CleanupReview.swift */; };
+		C1533C1C6D768627E06C82B0 /* DirectoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A222F6C5ACC723DD06FBCAA /* DirectoryTable.swift */; };
 		D7261CA1AC8CFCF3A3FDB75F /* DiskScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D010FCED3986301DE5F539A /* DiskScan.swift */; };
 		F0FC6DDCA23DD4CDA7BA65AD /* DiskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822CA554A8834BEFA6DF800F /* DiskModel.swift */; };
 		FE7D361A8BE9C2A61D9A943C /* Cleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37AE1ABAC657C390CD80913 /* Cleanup.swift */; };
@@ -25,6 +27,7 @@
 
 /* Begin PBXFileReference section */
 		0532F1A5A5B44DD0ADC32956 /* Treemap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Treemap.swift; sourceTree = "<group>"; };
+		0A222F6C5ACC723DD06FBCAA /* DirectoryTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryTable.swift; sourceTree = "<group>"; };
 		21DC82AFF81142D68FE01131 /* HaoDiskApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaoDiskApp.swift; sourceTree = "<group>"; };
 		28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskMapView.swift; sourceTree = "<group>"; };
 		349FBF9C8410369F44AB871B /* CleanupReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanupReview.swift; sourceTree = "<group>"; };
@@ -55,6 +58,7 @@
 			children = (
 				349FBF9C8410369F44AB871B /* CleanupReview.swift */,
 				B85F12661E1CA7807B1FD83F /* ContentView.swift */,
+				0A222F6C5ACC723DD06FBCAA /* DirectoryTable.swift */,
 				28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */,
 				822CA554A8834BEFA6DF800F /* DiskModel.swift */,
 			);
@@ -197,6 +201,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FE7D361A8BE9C2A61D9A943C /* Cleanup.swift in Sources */,
+				6C1B4FC918BDFE090B0C6BF1 /* DiskModel.swift in Sources */,
 				D7261CA1AC8CFCF3A3FDB75F /* DiskScan.swift in Sources */,
 				6F65B368DE0AF191B750FB04 /* HaoDiskTests.swift in Sources */,
 				913297E509E878D9CC86A5A9 /* Treemap.swift in Sources */,
@@ -210,6 +215,7 @@
 				12899C179F21F78C9121A182 /* Cleanup.swift in Sources */,
 				97159BA60D5FECACC2949311 /* CleanupReview.swift in Sources */,
 				641FBF2D9E4FCBEB1AAD4239 /* ContentView.swift in Sources */,
+				C1533C1C6D768627E06C82B0 /* DirectoryTable.swift in Sources */,
 				391048F7B55695A37C3F69E7 /* DiskMapView.swift in Sources */,
 				F0FC6DDCA23DD4CDA7BA65AD /* DiskModel.swift in Sources */,
 				604B13CEB6B2013C357B8945 /* DiskScan.swift in Sources */,
@@ -255,7 +261,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -268,7 +274,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -369,7 +375,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -388,7 +394,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

@@ -4,23 +4,25 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 
 把空间，看明白。按文件夹查看大小和面积占比，逐层找到占空间的项目，检查后移到系统废纸篓。
 
-![HaoDisk 实际运行界面，使用测试目录](docs/images/haodisk.png)
+![HaoDisk 0.2 实际运行界面，扫描本项目的真实源码目录](docs/images/haodisk-light.jpg)
+
+0.2 商业化候选版：紧凑导航、原生目录表格、面积图与一次审阅清理。当前完成本地签名沙箱验收，尚未提交 App Store。
 
 ## 功能
 
-- 左侧目录列表与右侧矩形面积图联动，按大小排序；支持双击下钻、面包屑、前进 / 后退和表格模式。
-- 切换磁盘占用空间与逻辑文件大小；展示整卷容量和本次已读容量。
-- 后台扫描、实时进度、可取消、隐藏文件、硬链接去重和读取问题清单。
+- 左侧目录列表与右侧矩形面积图联动，支持名称 / 大小双向排序、键盘选择与下钻、路径菜单、前进 / 后退和完整表格模式。
+- 切换磁盘占用空间与逻辑文件大小；目录占比集中在面积图 / 表格；整卷容量和统计说明按需展开。
+- 后台扫描、实时进度、可取消、隐藏文件、硬链接去重和读取问题清单；同一目录重扫保留浏览位置、选择与有效清单。
 - 系统目录选择器授权；保存最近一个目录的授权，重启后可继续，随时忘记。
 - 手动待清理清单、父子项去重、清理前文件与路径身份检查、文件夹内容复核、逐项结果反馈和自动重扫。
 - 原生深浅色外观、系统字体、键盘菜单、面积图辅助功能标签；不依赖 WebView。
 
 ## 在 Xcode 中运行
 
-1. 用 Xcode 15 或更新版本打开 `HaoDisk.xcodeproj`。项目支持 macOS 14+。
+1. 用 Xcode 打开 `HaoDisk.xcodeproj`，已在 Xcode 26.6 验证。最低部署版本为 macOS 14。
 2. 选择 `HaoDisk` scheme，在 Signing & Capabilities 中选择自己的开发者 Team；必要时更换 Bundle Identifier。
 3. Run，点击“选择文件夹”并授权。
-4. 选择项目查看详情，双击目录继续分析；通过“加入待清理”进入确认清单。
+4. 单击选中，双击目录下钻，⌘I 显示简介；点击废纸篓或按 ⌘⌫ 审阅所选项目，再明确点击“移到废纸篓”。多个项目可经右键菜单先加入清单。
 
 已提交完整 `.xcodeproj`，直接打开即可，无需安装 XcodeGen 或其他依赖。`project.yml` 仅供修改工程结构后重新生成使用。
 
@@ -68,4 +70,4 @@ docs/             计划、验证记录、App Store 准备
 
 当前界面语言为简体中文。无账号、联网权限、遥测、第三方 SDK 或运行时依赖。
 
-隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
+商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)

@@ -9,8 +9,8 @@ settings:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "14.0"
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
 targets:
   HaoDisk:
     type: application
@@ -46,7 +46,7 @@ targets:
   HaoDiskTests:
     type: bundle.unit-test
     platform: macOS
-    sources: [HaoDiskTests, HaoDisk/Core]
+    sources: [HaoDiskTests, HaoDisk/Core, HaoDisk/UI/DiskModel.swift]
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

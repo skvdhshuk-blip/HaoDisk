@@ -1,6 +1,6 @@
 # Mac App Store 准备
 
-首版采用 App Store 沙箱路线。本地可构建和沙箱运行已验证，仍需正式归档、分发验证、App Store Connect 配置和 Apple 审核。没有提交或上架的自动承诺。
+0.2 候选版采用 App Store 沙箱路线。本地可构建和沙箱运行已验证，仍需正式归档、分发验证、App Store Connect 配置和 Apple 审核。没有提交或上架的自动承诺。
 
 ## 权限设计
 
@@ -56,7 +56,7 @@ App Privacy 问卷按当前实现应选择“不收集数据”。发布前根�
 
 HaoDisk is a local disk-space analyzer. Click “选择文件夹” to select a folder using the standard macOS Open panel. The app only scans the selected folder and displays file sizes in a list and treemap. It needs no login or network access.
 
-To test cleanup, create a disposable file in a selected ordinary folder, select it, choose “加入待清理”, open “待清理”, review the paths and check the confirmation box, then choose “移到废纸篓”. The app uses FileManager.trashItem and never permanently deletes files or empties Trash. System folders, Library folders, app/data packages, and incomplete scans are protected. The app stores a security-scoped bookmark only for the most recently selected folder; it can be removed from the toolbar menu.
+To test cleanup, create a disposable file in a selected ordinary folder, select it and click the trash toolbar button (or press Command-Delete), review the listed paths, then explicitly click “移到废纸篓”. There is one review sheet and no default Return-key action for moving files. Multiple items can be queued through the context menu before review. The app uses FileManager.trashItem and never permanently deletes files or empties Trash. System folders, Library folders, app/data packages, and incomplete scans are protected. The app stores a security-scoped bookmark only for the most recently selected folder; it can be removed from the toolbar menu.
 
 ## 参考
 

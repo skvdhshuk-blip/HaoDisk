@@ -1,4 +1,8 @@
-# 首版验证记录
+# 验证记录
+
+最新候选版：0.2.0 (2)，商业化布局与真实目录验收见 [COMMERCIAL_ACCEPTANCE.md](COMMERCIAL_ACCEPTANCE.md)。
+
+## 0.1 基线
 
 日期：2026-09-06。环境：Apple Silicon Mac、macOS 26.4、Xcode 26.6、Swift 6.3.3。最低部署版本为 macOS 14。
 
@@ -42,8 +46,8 @@ Xcode 仅输出不影响构建的 App Intents 元数据提示（未使用 AppInt
 
 - macOS 14 / 15 与 Intel 真机运行；当前 Intel 仅证明构建成功。
 - App Store 分发归档、Validate App、TestFlight 和正式审核。
-- iCloud / 第三方 File Provider、外置或只读文件系统、网络卷与真实大规模文件树。
-- VoiceOver 完整流程、深色外观及更大字体的人工验收。
+- iCloud / 第三方 File Provider、外置或只读文件系统、网络卷与超过当前 12,000 直接子项规模的文件树。
+- VoiceOver 完整流程、提高对比度 / 减少透明度等辅助功能设置。深色外观已在 0.2 本机完成验收。
 - 文件访问授权被系统撤销、卷离线、跨版本迁移等长期使用情景。
 
 扫描是某一时刻的观察。清理前会再次核对路径身份和文件夹内容，但路径式系统废纸篓 API 与其他进程之间不提供全局原子事务；正在被其他程序持续修改的目录应停止写入后再处理。APFS 共享块与快照也使“已统计大小”无法等同于“清空后实际可释放空间”。

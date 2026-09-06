@@ -19,10 +19,14 @@ private final class FolderAccess {
 @MainActor
 final class DiskModel: ObservableObject {
     @Published var snapshot: DiskSnapshot?
-    @Published var currentID = 0
-    @Published var selectedID: Int?
-    @Published var metric: SizeMetric = .allocated
+    @Published var currentID = 0 { didSet { refreshChildren() } }
+    @Published var selectedID: Int? { didSet { refreshSelection() } }
+    @Published var metric: SizeMetric = .allocated { didSet { refreshChildren() } }
+    @Published var sort: DirectorySort = .sizeDescending { didSet { refreshChildren() } }
+    @Published private(set) var children: [DiskNode] = []
     @Published var visualMode = true
+    @Published var showInspector = false
+    @Published var showResults = false
     @Published var progress = ScanProgress(count: 0, bytes: 0, folder: "准备扫描")
     @Published var isScanning = false
     @Published var isCleaning = false
@@ -39,16 +43,49 @@ final class DiskModel: ObservableObject {
     private var scanID = UUID()
     private var history: [Int] = []
     private var future: [Int] = []
+    private var selectionRestriction: String?
 
     var isBusy: Bool { isScanning || isCleaning || isChoosing }
     var hasAccess: Bool { access != nil }
     var canGoBack: Bool { !history.isEmpty }
     var canGoForward: Bool { !future.isEmpty }
     var current: DiskNode? { snapshot?.nodes[currentID] }
-    var selected: DiskNode? { selectedID.flatMap { snapshot?.nodes[$0] } }
-    var children: [DiskNode] { snapshot?.children(of: currentID, metric: metric) ?? [] }
+    var selected: DiskNode? {
+        guard let snapshot, let selectedID, snapshot.nodes.indices.contains(selectedID) else { return nil }
+        return snapshot.nodes[selectedID]
+    }
+    var directoryCount: Int { current?.children.count ?? 0 }
     var basketNodes: [DiskNode] { basket.sorted().compactMap { snapshot?.nodes[$0] } }
     var basketBytes: Int64 { basketNodes.reduce(0) { $0 + $1.bytes(metric) } }
+
+    private func refreshChildren() {
+        guard let snapshot, snapshot.nodes.indices.contains(currentID) else { children = []; return }
+        children = snapshot.children(of: currentID, metric: metric, sort: sort)
+    }
+
+    func selectOffset(_ offset: Int) {
+        guard !isBusy, !children.isEmpty else { return }
+        let index = selectedID.flatMap { id in children.firstIndex { $0.id == id } }
+        let next = index.map { min(children.count - 1, max(0, $0 + offset)) } ?? (offset > 0 ? 0 : children.count - 1)
+        selectedID = children[next].id
+    }
+
+    func openSelected() {
+        guard !isBusy, let selected else { return }
+        if selected.canNavigate { navigate(selected.id) } else { showInspector = true }
+    }
+
+    private func refreshSelection() {
+        guard let snapshot, let selected else { selectionRestriction = nil; return }
+        selectionRestriction = CleanupPolicy.reason(for: selected.id, in: snapshot)
+    }
+    var selectedCleanupReason: String? { selectionRestriction }
+
+    func reviewSelected() {
+        guard let selected, !isBusy, selectedCleanupReason == nil else { return }
+        add(selected)
+        showReview = true
+    }
 
     func chooseFolder() {
         guard !isBusy else { return }
@@ -101,6 +138,7 @@ final class DiskModel: ObservableObject {
         hasBookmark = false
         access = nil
         snapshot = nil
+        children = []
         basket = []
         selectedID = nil
         currentID = 0
@@ -109,10 +147,20 @@ final class DiskModel: ObservableObject {
 
     func scan(preservingOutcomes: Bool = false) {
         guard !isBusy, let url = access?.url else { return }
+        let sameRoot = snapshot?.root.url == url.resolvingSymlinksInPath().standardizedFileURL
+        let currentPath = sameRoot ? current?.url.path : nil
+        let selectedPath = sameRoot ? selected?.url.path : nil
+        let oldHistory = sameRoot ? history.compactMap { snapshot?.nodes[$0].url.path } : []
+        let oldFuture = sameRoot ? future.compactMap { snapshot?.nodes[$0].url.path } : []
+        let oldQueue = sameRoot ? (preservingOutcomes ? outcomes.filter { $0.error != nil }.map { $0.url.path } : basketNodes.map { $0.url.path }) : []
         isScanning = true
-        snapshot = nil
-        basket = []; selectedID = nil
-        currentID = 0; history = []; future = []
+        basket = []
+        showInspector = false
+        showReview = false
+        if !sameRoot {
+            snapshot = nil; children = []; selectedID = nil
+            currentID = 0; history = []; future = []
+        }
         if !preservingOutcomes { outcomes = [] }
         progress = ScanProgress(count: 0, bytes: 0, folder: url.lastPathComponent)
         let token = UUID()
@@ -131,6 +179,15 @@ final class DiskModel: ObservableObject {
                 let result = try await job.value
                 guard scanID == token else { return }
                 snapshot = result
+                let wanted = Set(oldHistory + oldFuture + oldQueue + [currentPath, selectedPath].compactMap { $0 })
+                var restored: [String: Int] = [:]
+                for node in result.nodes where wanted.contains(node.url.path) { restored[node.url.path] = node.id }
+                currentID = currentPath.flatMap { restored[$0] } ?? 0
+                selectedID = selectedPath.flatMap { restored[$0] }
+                history = oldHistory.compactMap { restored[$0] }
+                future = oldFuture.compactMap { restored[$0] }
+                basket = Set(oldQueue.compactMap { restored[$0] }.filter { CleanupPolicy.reason(for: $0, in: result) == nil })
+                refreshChildren()
             } catch { message = error.localizedDescription }
             isScanning = false
             worker = nil
@@ -145,16 +202,17 @@ final class DiskModel: ObservableObject {
         future = []
         currentID = id
         selectedID = nil
+        showInspector = false
     }
 
     func back() {
         guard !isBusy, let id = history.popLast() else { return }
-        future.append(currentID); currentID = id; selectedID = nil
+        future.append(currentID); currentID = id; selectedID = nil; showInspector = false
     }
 
     func forward() {
         guard !isBusy, let id = future.popLast() else { return }
-        history.append(currentID); currentID = id; selectedID = nil
+        history.append(currentID); currentID = id; selectedID = nil; showInspector = false
     }
 
     func up() { if let id = current?.parent { navigate(id) } }

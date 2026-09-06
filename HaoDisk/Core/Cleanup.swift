@@ -49,6 +49,7 @@ enum CleanupPolicy {
 struct TrashOutcome: Sendable {
     let id: Int
     let name: String
+    let url: URL
     let error: String?
 }
 
@@ -92,9 +93,9 @@ struct TrashService {
                     }
                 }
                 try operation(node.url)
-                results.append(TrashOutcome(id: id, name: node.name, error: nil))
+                results.append(TrashOutcome(id: id, name: node.name, url: node.url, error: nil))
             } catch {
-                results.append(TrashOutcome(id: id, name: node.name, error: error.localizedDescription))
+                results.append(TrashOutcome(id: id, name: node.name, url: node.url, error: error.localizedDescription))
             }
         }
         return results
