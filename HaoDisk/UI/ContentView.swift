@@ -118,7 +118,8 @@ struct ContentView: View {
                             .font(.system(size: 27, weight: .medium, design: .rounded)).monospacedDigit()
                     }
                     if model.children.isEmpty {
-                        ContentUnavailableView(model.current?.issueCount ?? 0 > 0 ? "无法完整读取此目录" : "这个文件夹是空的", systemImage: "folder", description: Text(model.current?.issueCount ?? 0 > 0 ? "请查看权限问题详情，或重新选择目录。" : "可以返回上层继续分析。"))
+                        let incomplete = snapshot.stoppedEarly || (model.current?.issueCount ?? 0) > 0
+                        ContentUnavailableView(incomplete ? "没有已读取的项目" : "这个文件夹是空的", systemImage: "folder", description: Text(incomplete ? "本次扫描未完整结束，请重新扫描或查看权限详情。" : "可以返回上层继续分析。"))
                     } else if model.visualMode {
                         DiskMapView(model: model)
                     } else {
