@@ -1,6 +1,6 @@
 # Mac App Store 准备
 
-0.2.1 候选版采用 App Store 沙箱路线。本地可构建和沙箱运行已验证，仍需正式归档、分发验证、App Store Connect 配置和 Apple 审核。没有提交或上架的自动承诺。
+0.2.4（构建 6）已于 2026-09-06 完成正式归档、App Store 分发签名和上传，Apple 已处理构建。当前仍为“准备提交”：审核联系电话和邮箱缺失，阻止保存版本资料。尚未提交审核或上架。
 
 ## 权限设计
 
@@ -25,7 +25,7 @@ flowchart LR
   E --> F[检查并确认]
   F --> G[复核文件和目录内容]
   G --> H[系统移到废纸篓]
-  H --> I[逐项反馈与重新扫描]
+  H --> I[事务更新临时索引与受影响目录]
   C --> J[下次用户点击继续]
   J --> K[解析并更新书签]
   K --> D
@@ -43,20 +43,38 @@ flowchart LR
 
 App Privacy 问卷按当前实现应选择“不收集数据”。发布前根据实际最终构建重新核对，后续新增 SDK 或网络功能需要同步更新。
 
-## 提交前步骤
+## 本次发布记录
 
-1. 在 Xcode 选择自己的开发者 Team，确定唯一 Bundle ID；当前默认 `com.haodisk.app` 尚未代为注册。
-2. 在 App Store Connect 建立 macOS App，填写定价、地区、年龄分级和简体中文元数据。
-3. 提供公开隐私政策 URL、支持 URL、适合商店的截图与最终图标，核对著作权与品牌信息。
-4. Product → Archive，选择 Mac App Store Connect 分发，运行 Validate App，核对签名和权限。
-5. TestFlight 真机复验：首次授权、拒绝授权、重启恢复、失效书签、移动目录、只读 / 外置卷、iCloud、权限不足、取消、废纸篓失败、深浅色、VoiceOver 和 Intel Mac。
-6. 补充审核说明后提交。TestFlight 可用、上传成功、App Store 审核通过是不同状态。
+| 项目 | 当前状态 |
+| --- | --- |
+| Bundle ID | `com.haodisk.app`，已注册 |
+| Apple App ID | `6809158350` |
+| 版本 / 构建 | `0.2.4 / 6`，arm64 + x86_64 |
+| 上传 | 2026-09-06 19:29（Asia/Shanghai）成功，Apple 已处理 |
+| 签名 | Apple Distribution；安装包为 Mac Developer Installer 签名；无 `get-task-allow` |
+| 价格 | 免费、无内购 |
+| 供应范围 | 148 个国家或地区，排除欧盟 27 国，不自动添加未来地区 |
+| 类别 / 年龄 | 工具 / 4+ |
+| App 隐私 | 已发布“不收集数据”及隐私政策 URL |
+| 出口合规 | 已回答不使用问卷列出的加密算法 |
+| 截图 | 已上传 2560 × 1600 原生应用截图，内容为自建演示目录 |
+| 发布方式 | 审核通过后自动发布 |
+| 待完成 | 补齐审核电话和邮箱，保存构建关联及版本资料，完成最终提交校验并提交 |
+
+- [主页](https://skvdhshuk-blip.github.io/HaoDisk/)
+- [隐私政策](https://skvdhshuk-blip.github.io/HaoDisk/privacy.html)
+- [支持页面](https://skvdhshuk-blip.github.io/HaoDisk/support.html)
+- [App Store Connect](https://appstoreconnect.apple.com/apps/6809158350/distribution)
+
+审核联系人沿用现有应用的 Hao Wang；现有两个应用的电话和邮箱为空，因此需要用户补充。这些资料只提交 Apple，不存入仓库或公开主页。
+
+本地沙箱应用的功能验证见 0.2.4 验证报告。正式上传成功不等于 TestFlight 真机复验、Intel 实机验证或 Apple 审核通过；这些状态分别记录，不能互相替代。
 
 ## 审核说明草稿
 
 HaoDisk is a local disk-space analyzer. Click “选择文件夹” to select a folder using the standard macOS Open panel. The app only scans the selected folder and displays file sizes in a list and treemap. It needs no login or network access.
 
-To test cleanup, create a disposable file in a selected ordinary folder, select it and click the trash toolbar button (or press Command-Delete), review the listed paths, then explicitly click “移到废纸篓”. There is one review sheet and no default Return-key action for moving files. Multiple items can be queued through the context menu before review. The app uses FileManager.trashItem and never permanently deletes files or empties Trash. System folders, Library folders, app/data packages, and unreadable items are protected. If the overall scan stops early, selected directories still require a complete rescan with matching file identities before any Trash operation. The app stores a security-scoped bookmark only for the most recently selected folder; it can be removed from the toolbar menu.
+To test cleanup, create a disposable file in a selected ordinary folder, select it and click the trash toolbar button (or press Command-Delete), review the listed paths, then explicitly click “移到废纸篓”. There is one review sheet and no default Return-key action for moving files. Multiple items can be queued through the context menu before review. The app uses FileManager.trashItem and never permanently deletes files or empties Trash. System folders, Library folders, app/data packages, and unreadable items are protected. Before moving a directory to Trash, the app streams its current contents and compares them with the scan index. Successful cleanup updates affected index records and ancestors without rescanning the whole authorized root; external changes require a manual rescan. The app stores a security-scoped bookmark only for the most recently selected folder; it can be removed from the toolbar menu.
 
 ## 参考
 
