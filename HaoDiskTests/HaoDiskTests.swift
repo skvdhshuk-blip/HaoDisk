@@ -123,11 +123,11 @@ final class HaoDiskTests: XCTestCase {
         try file("large", bytes: 1_000_000)
         for n in 0..<20 { try file("small-\(n)", bytes: 1) }
         let scan = try DiskScanner().scan(root)
-        let items = TreemapItems(scan.children(of: 0, metric: .logical), metric: .logical)
-        XCTAssertEqual(items.shown.count, 21)
-        XCTAssertTrue(items.remaining.isEmpty)
+        let items = try DirectoryPresentation.prepare(scan, directoryID: 0, metric: .logical, sort: .sizeDescending).map
+        XCTAssertEqual(items.entries.filter { $0.id != -1 }.count, 21)
+        XCTAssertTrue(items.remainingFirstID == nil)
         for size in [CGSize(width: 380, height: 400), CGSize(width: 800, height: 700)] {
-            let weights = items.weights(.logical)
+            let weights = items.weights
             let total = weights.reduce(0) { $0 + $1.value }
             let tiles = Treemap.layout(weights, in: CGRect(origin: .zero, size: size))
             XCTAssertEqual(Set(tiles.map(\.id)), Set(scan.root.children))
@@ -144,13 +144,13 @@ final class HaoDiskTests: XCTestCase {
         for n in 0..<85 { try file("file-\(n)", bytes: n + 1) }
         try file("empty", bytes: 0)
         let scan = try DiskScanner().scan(root)
-        let items = TreemapItems(scan.children(of: 0, metric: .logical), metric: .logical)
-        XCTAssertEqual(items.shown.count, 80)
-        XCTAssertEqual(items.remaining.count, 5)
-        XCTAssertEqual(items.remainingBytes(.logical), 15)
-        XCTAssertEqual(items.weights(.logical).reduce(0) { $0 + $1.value }, Double(scan.root.logicalBytes))
-        XCTAssertEqual(items.weights(.logical).last?.id, -1)
-        XCTAssertFalse((items.shown + items.remaining).contains { $0.name == "empty" })
+        let items = try DirectoryPresentation.prepare(scan, directoryID: 0, metric: .logical, sort: .sizeDescending).map
+        XCTAssertEqual(items.entries.filter { $0.id != -1 }.count, 80)
+        XCTAssertEqual(items.entries.last?.name, "其余 5 项")
+        XCTAssertEqual(items.entries.last?.bytes, 15)
+        XCTAssertEqual(items.weights.reduce(0) { $0 + $1.value }, Double(scan.root.logicalBytes))
+        XCTAssertEqual(items.weights.last?.id, -1)
+        XCTAssertFalse(items.entries.contains { $0.name == "empty" })
     }
 
     func testMapFollowsSelectedSizeMetric() throws {
@@ -161,13 +161,13 @@ final class HaoDiskTests: XCTestCase {
         try file("regular", bytes: 16384)
         let scan = try DiskScanner().scan(root)
         for metric in SizeMetric.allCases {
-            let items = TreemapItems(scan.children(of: 0, metric: metric), metric: metric)
-            for weight in items.weights(metric) {
+            let items = try DirectoryPresentation.prepare(scan, directoryID: 0, metric: metric, sort: .sizeDescending).map
+            for weight in items.weights {
                 XCTAssertEqual(weight.value, Double(scan.nodes[weight.id].bytes(metric)))
             }
         }
-        XCTAssertEqual(TreemapItems(scan.children(of: 0, metric: .logical), metric: .logical).shown.first?.name, "sparse")
-        XCTAssertEqual(TreemapItems(scan.children(of: 0, metric: .allocated), metric: .allocated).shown.first?.name, "regular")
+        XCTAssertEqual(try DirectoryPresentation.prepare(scan, directoryID: 0, metric: .logical, sort: .sizeDescending).map.entries.first?.name, "sparse")
+        XCTAssertEqual(try DirectoryPresentation.prepare(scan, directoryID: 0, metric: .allocated, sort: .sizeDescending).map.entries.first?.name, "regular")
     }
 
     func testVolumeCapacityIsIndependentOfDirectoryScanAndMissingIsUnknown() throws {
@@ -270,6 +270,20 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertNotNil(CleanupPolicy.reason(for: folder.id, in: scan))
     }
 
+    func testPackageRestrictionsPropagateToAncestorsAndContents() throws {
+        try file("outer/Test.app/Contents/data", bytes: 10)
+        try file("okay/item", bytes: 10)
+        let scan = try DiskScanner().scan(root)
+        for name in ["outer", "Test.app", "Contents", "data"] {
+            let node = try XCTUnwrap(scan.nodes.first { $0.name == name })
+            XCTAssertNotNil(CleanupPolicy.reason(for: node.id, in: scan))
+        }
+        let okay = try XCTUnwrap(scan.nodes.first { $0.name == "okay" })
+        XCTAssertNil(CleanupPolicy.reason(for: okay.id, in: scan))
+        XCTAssertTrue(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Users/a/Downloads/../Library/data")))
+        XCTAssertFalse(CleanupPolicy.protectedPath(URL(fileURLWithPath: "/Users/a/Library/../Downloads/data")))
+    }
+
     func testPermissionFailureIsVisibleAndBlocksCleanup() throws {
         try file("blocked/a", bytes: 50)
         let directory = root.appendingPathComponent("blocked")
@@ -312,12 +326,12 @@ final class HaoDiskTests: XCTestCase {
         try file("z-file", bytes: 20)
         let scan = try DiskScanner().scan(root)
         let model = DiskModel()
-        model.snapshot = scan
-        model.currentID = 0
         model.metric = .logical
+        await model.install(try PreparedScan.prepare(scan, metric: .logical, sort: .sizeDescending))
         model.selectOffset(1)
         XCTAssertEqual(model.selected?.name, "folder")
         model.openSelected()
+        await model.waitForDirectory()
         XCTAssertEqual(model.current?.name, "folder")
         XCTAssertTrue(model.canGoBack)
         model.selectOffset(1)
@@ -327,12 +341,15 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertEqual(model.basketNodes.map(\.name), ["a"])
         model.showReview = false
         model.back()
+        await model.waitForDirectory()
         XCTAssertEqual(model.currentID, 0)
         model.forward()
+        await model.waitForDirectory()
         XCTAssertEqual(model.current?.name, "folder")
         model.up()
         model.sort = .nameDescending
-        XCTAssertEqual(model.children.map(\.name), ["z-file", "folder"])
+        await model.waitForDirectory()
+        XCTAssertEqual(model.presentation?.rowIDs.map { scan.nodes[$0].name }, ["z-file", "folder"])
         model.isScanning = true
         model.selectOffset(1)
         XCTAssertNil(model.selectedID)

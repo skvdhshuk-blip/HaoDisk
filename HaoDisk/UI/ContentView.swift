@@ -11,11 +11,16 @@ struct ContentView: View {
                 Divider()
             }
             if let snapshot = model.snapshot {
-                workspace(snapshot).disabled(model.isBusy)
+                workspace(snapshot).disabled(model.isBrowsingBusy)
+                    .overlay {
+                        if model.isLoadingDirectory {
+                            ProgressView("正在打开文件夹…").padding(18).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
                 Divider()
                 statusBar(snapshot)
             } else if model.isScanning {
-                scanningView
+                ScanProgressView(progress: model.scanProgress, cancel: model.cancelScan)
             } else {
                 welcomeView
             }
@@ -42,11 +47,11 @@ struct ContentView: View {
                         Image(systemName: "list.bullet").help("列表（⌘2）").tag(false)
                     }.pickerStyle(.segmented).frame(width: 76)
                     Button { model.showInspector.toggle() } label: { Label("显示简介", systemImage: "info.circle") }
-                        .help("显示简介（⌘I）").disabled(model.selected == nil || model.isBusy)
+                        .help("显示简介（⌘I）").disabled(model.selected == nil || model.isBrowsingBusy)
                         .popover(isPresented: $model.showInspector, arrowEdge: .bottom) { inspector }
                     Button { model.reviewSelected() } label: { Label("清理所选项目…", systemImage: "trash") }
                         .help(model.selectedCleanupReason ?? "清理所选项目（⌘⌫）")
-                        .disabled(model.selected == nil || model.selectedCleanupReason != nil || model.isBusy)
+                        .disabled(model.selected == nil || model.selectedCleanupReason != nil || model.isBrowsingBusy)
                 }
                 if !model.basket.isEmpty {
                     Button { model.showReview = true } label: { Label("待清理 \(model.basket.count)", systemImage: "tray.full") }
@@ -81,16 +86,6 @@ struct ContentView: View {
                 if model.hasBookmark { Button("打开上次的文件夹") { model.restoreFolder() } }
             }.controlSize(.large).disabled(model.isBusy)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView().controlSize(.regular)
-            Text("正在扫描 \(model.progress.folder)").font(.headline).lineLimit(1).truncationMode(.middle)
-            Text("\(model.progress.count.formatted()) 项 · \(formattedBytes(model.progress.bytes))")
-                .monospacedDigit().foregroundStyle(.secondary)
-            Button("停止扫描") { model.cancelScan() }.buttonStyle(.link)
-        }.frame(maxWidth: 400).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func breadcrumbs(_ snapshot: DiskSnapshot) -> some View {
@@ -152,7 +147,7 @@ struct ContentView: View {
     }
 
     @ViewBuilder private func workspace(_ snapshot: DiskSnapshot) -> some View {
-        if model.children.isEmpty {
+        if model.presentation?.rowIDs.isEmpty != false {
             let partial = snapshot.stoppedEarly || (model.current?.issueCount ?? 0) > 0
             ContentUnavailableView(partial ? "没有已读取的项目" : "这个文件夹是空的", systemImage: partial ? "folder.badge.questionmark" : "folder", description: Text(partial ? "重新扫描或查看读取问题。" : "返回上层继续分析。"))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -169,11 +164,10 @@ struct ContentView: View {
     private func statusBar(_ snapshot: DiskSnapshot) -> some View {
         HStack(spacing: 14) {
             if model.isScanning {
-                ProgressView().controlSize(.mini)
-                Text("正在扫描 · \(model.progress.count.formatted()) 项").monospacedDigit()
+                ScanProgressStatus(progress: model.scanProgress)
             } else {
                 Text("\(model.directoryCount.formatted()) 项").monospacedDigit()
-                Text(model.current.map { nodeSizeLabel($0, metric: model.metric) } ?? "").monospacedDigit()
+                Text(model.current.map { nodeSizeLabel($0, metric: model.displayedMetric) } ?? "").monospacedDigit()
                 if snapshot.stoppedEarly || snapshot.issueCount > 0 {
                     Button { model.showIssues = true } label: {
                         Label(snapshot.stopReason?.title ?? "\(snapshot.issueCount) 处未读取", systemImage: "exclamationmark.triangle")
@@ -207,7 +201,7 @@ struct ContentView: View {
                     infoRow("占用空间", nodeSizeLabel(node, metric: .allocated))
                     infoRow("文件大小", nodeSizeLabel(node, metric: .logical))
                     if node.isDirectory { infoRow(node.issueCount > 0 || model.snapshot?.stoppedEarly == true ? "已读项目" : "包含", "\(node.descendantCount.formatted()) 项") }
-                    if node.issueCount == 0 { infoRow("当前目录占比", percentage(node.bytes(model.metric), total: model.current?.bytes(model.metric) ?? 0)) }
+                    if node.issueCount == 0 { infoRow("当前目录占比", percentage(node.bytes(model.displayedMetric), total: model.current?.bytes(model.displayedMetric) ?? 0)) }
                 }.font(.callout)
                 Text(node.url.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 if let reason = model.selectedCleanupReason { Label(reason, systemImage: "lock").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
@@ -239,7 +233,7 @@ struct ContentView: View {
                 infoRow("磁盘总容量", model.volumeCapacity?.total.map(formattedBytes) ?? "—")
                 infoRow("可用空间", model.volumeCapacity?.available.map(formattedBytes) ?? "—")
                 if let snapshot = model.snapshot {
-                    infoRow("本次已读", formattedBytes(snapshot.root.bytes(model.metric)))
+                    infoRow("本次已读", formattedBytes(snapshot.root.bytes(model.displayedMetric)))
                 }
             }
             Text("图表只包含所选目录的已读内容。共享块、快照和废纸篓会影响实际可释放空间。")
@@ -313,27 +307,51 @@ struct ContentView: View {
 }
 
 struct NodeMenu: View {
-    let node: DiskNode
+    let id: Int
+    let version: UUID
     @ObservedObject var model: DiskModel
     var body: some View {
-        if node.canNavigate { Button("打开文件夹") { model.navigate(node.id) } }
-        Button("显示简介") { model.selectedID = node.id; model.showInspector = true }
-        Button("在 Finder 中显示") { model.reveal(node) }
-        Divider()
-        if model.basket.contains(node.id) { Button("从待清理移除") { model.basket.remove(node.id) } }
-        else {
-            Button("加入待清理") { model.add(node) }
-                .disabled(model.snapshot.map { CleanupPolicy.reason(for: node.id, in: $0) != nil } ?? true)
+        // SwiftUI can reevaluate an old tile while its snapshot is being replaced.
+        if let node = model.node(for: id, version: version) {
+            if node.canNavigate { Button("打开文件夹") { perform { model.navigate($0.id) } } }
+            Button("显示简介") { perform { model.selectedID = $0.id; model.showInspector = true } }
+            Button("在 Finder 中显示") { perform { model.reveal($0) } }
+            Divider()
+            if model.basket.contains(id) { Button("从待清理移除") { perform { model.basket.remove($0.id) } } }
+            else {
+                Button("加入待清理") { perform { model.add($0) } }
+                    .disabled(model.snapshot.map { CleanupPolicy.reason(for: id, in: $0) != nil } ?? true)
+            }
         }
+    }
+
+    private func perform(_ action: (DiskNode) -> Void) {
+        guard !model.isBrowsingBusy, let node = model.node(for: id, version: version) else { return }
+        action(node)
     }
 }
 
-func ratio(_ value: Int64, total: Int64) -> Double { total > 0 ? min(1, max(0, Double(value) / Double(total))) : 0 }
-func percentage(_ value: Int64, total: Int64) -> String {
-    let share = ratio(value, total: total)
-    return share > 0 && share < 0.001 ? "<0.1%" : share.formatted(.percent.precision(.fractionLength(1)))
+
+private struct ScanProgressView: View {
+    @ObservedObject var progress: ScanProgressModel
+    let cancel: () -> Void
+    var body: some View {
+        VStack(spacing: 16) {
+            ProgressView().controlSize(.regular)
+            Text("正在扫描 \(progress.value.folder)").font(.headline).lineLimit(1).truncationMode(.middle)
+            Text("\(progress.value.count.formatted()) 项 · \(formattedBytes(progress.value.bytes))")
+                .monospacedDigit().foregroundStyle(.secondary)
+            Button("停止扫描", action: cancel).buttonStyle(.link)
+        }.frame(maxWidth: 400).frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
-func nodeSizeLabel(_ node: DiskNode, metric: SizeMetric) -> String {
-    if node.issueCount > 0 { return node.bytes(metric) > 0 ? "已读 \(formattedBytes(node.bytes(metric)))" : "未读取" }
-    return formattedBytes(node.bytes(metric))
+
+private struct ScanProgressStatus: View {
+    @ObservedObject var progress: ScanProgressModel
+    var body: some View {
+        HStack {
+            ProgressView().controlSize(.mini)
+            Text("正在扫描 · \(progress.value.count.formatted()) 项").monospacedDigit()
+        }
+    }
 }

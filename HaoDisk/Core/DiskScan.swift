@@ -66,7 +66,7 @@ struct ScanIssue: Identifiable, Sendable {
     let message: String
 }
 
-struct ScanProgress: Sendable {
+struct ScanProgress: Equatable, Sendable {
     let count: Int
     let bytes: Int64
     let folder: String
@@ -103,13 +103,27 @@ enum ScanStopReason: Equatable, Sendable {
 }
 
 struct DiskSnapshot: Sendable {
+    let version = UUID()
     let nodes: [DiskNode]
+    let cleanupRestrictions: [CleanupRestriction?]
     let issues: [ScanIssue]
     let issueCount: Int
     let stopReason: ScanStopReason?
     let elapsed: TimeInterval
     let totalCapacity: Int64?
     let availableCapacity: Int64?
+
+    init(nodes: [DiskNode], issues: [ScanIssue], issueCount: Int, stopReason: ScanStopReason?,
+         elapsed: TimeInterval, totalCapacity: Int64?, availableCapacity: Int64?) {
+        self.nodes = nodes
+        self.cleanupRestrictions = CleanupPolicy.index(nodes)
+        self.issues = issues
+        self.issueCount = issueCount
+        self.stopReason = stopReason
+        self.elapsed = elapsed
+        self.totalCapacity = totalCapacity
+        self.availableCapacity = availableCapacity
+    }
     var root: DiskNode { nodes[0] }
     var stoppedEarly: Bool { stopReason != nil }
     var isComplete: Bool { !stoppedEarly && issueCount == 0 }
@@ -211,7 +225,7 @@ struct DiskScanner: Sendable {
                 enumerator.skipDescendants()
                 record(url, error.localizedDescription, at: parent)
             }
-            if Date().timeIntervalSince(lastProgress) >= 0.12 {
+            if Date().timeIntervalSince(lastProgress) >= 0.2 {
                 lastProgress = Date()
                 progress(ScanProgress(count: nodes.count - 1, bytes: allocated, folder: url.deletingLastPathComponent().lastPathComponent))
             }

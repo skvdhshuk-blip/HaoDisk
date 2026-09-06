@@ -49,16 +49,11 @@ struct DirectoryTable: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.model = model
         table.tableColumns.last?.isHidden = !detailed
-        table.isEnabledForInput = !model.isBusy
+        table.isEnabledForInput = !model.isBrowsingBusy
         table.alphaValue = model.isScanning ? 0.55 : 1
-        let rows = model.children
-        // Changes to selection alone never reload or reset the scroll position.
-        if coordinator.rows != rows.map(\.id) || coordinator.metric != model.metric || coordinator.root != model.snapshot?.root.identity || coordinator.scanning != model.isScanning {
-            coordinator.rows = rows.map(\.id)
-            coordinator.nodes = rows
-            coordinator.metric = model.metric
-            coordinator.root = model.snapshot?.root.identity
-            coordinator.scanning = model.isScanning
+        // Snapshot/directory/metric/sort form the data identity; selection is O(1).
+        if coordinator.display?.presentation.key != model.presentation?.key {
+            coordinator.display = model.display
             coordinator.updating = true
             table.reloadData()
             coordinator.updating = false
@@ -69,19 +64,25 @@ struct DirectoryTable: NSViewRepresentable {
             table.sortDescriptors = [descriptor]
             coordinator.updating = false
         }
-        let selected = model.selectedID.flatMap { id in rows.firstIndex { $0.id == id } } ?? -1
+        let selected = model.selectedID.flatMap { model.presentation?.rowByID[$0] } ?? -1
         if table.selectedRow != selected {
             coordinator.updating = true
             table.selectRowIndexes(selected < 0 ? [] : IndexSet(integer: selected), byExtendingSelection: false)
             if selected >= 0 { table.scrollRowToVisible(selected) }
             coordinator.updating = false
         }
-        // Queue changes update visible status icons without rebuilding the table.
-        let visibleRows = table.rows(in: table.visibleRect)
-        for row in min(table.numberOfRows, visibleRows.location)..<min(table.numberOfRows, visibleRows.upperBound) {
-            if let cell = table.view(atColumn: 0, row: row, makeIfNecessary: false) as? NameCell {
-                cell.status.image = coordinator.statusImage(rows[row])
-                cell.status.setAccessibilityElement(cell.status.image != nil)
+        // Only queue changes need to repaint the visible status icons.
+        if coordinator.basket != model.basket {
+            coordinator.basket = model.basket
+            let visible = table.rows(in: table.visibleRect)
+            if visible.location != NSNotFound {
+                for row in visible.location..<min(table.numberOfRows, visible.upperBound) {
+                    if let node = coordinator.node(at: row),
+                       let cell = table.view(atColumn: 0, row: row, makeIfNecessary: false) as? NameCell {
+                        cell.status.image = coordinator.statusImage(node)
+                        cell.status.setAccessibilityElement(cell.status.image != nil)
+                    }
+                }
             }
         }
     }
@@ -89,28 +90,32 @@ struct DirectoryTable: NSViewRepresentable {
     @MainActor final class Coordinator: NSObject, NSTableViewDelegate, NSTableViewDataSource, NSMenuDelegate {
         var model: DiskModel
         weak var table: NSTableView?
-        var rows: [Int] = []
-        var nodes: [DiskNode] = []
-        var metric: SizeMetric?
-        var root: FileIdentity?
-        var scanning = false
+        var display: DirectoryDisplay?
+        var basket: Set<Int> = []
+        private let folderIcon = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil)
+        private let fileIcon = NSImage(systemSymbolName: "doc", accessibilityDescription: nil)
+        private let linkIcon = NSImage(systemSymbolName: "link", accessibilityDescription: nil)
+        private let queuedIcon = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: "已加入清单")
+        private let issueIcon = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "未完整读取")
         var updating = false
         init(model: DiskModel) { self.model = model }
-        func numberOfRows(in tableView: NSTableView) -> Int { nodes.count }
+        func numberOfRows(in tableView: NSTableView) -> Int { display?.presentation.rowIDs.count ?? 0 }
+        func node(at row: Int) -> DiskNode? {
+            guard let display, display.presentation.rowIDs.indices.contains(row) else { return nil }
+            return display.snapshot.nodes[display.presentation.rowIDs[row]]
+        }
 
         func statusImage(_ node: DiskNode) -> NSImage? {
-            let name = model.basket.contains(node.id) ? "checkmark.circle.fill" : node.issueCount > 0 ? "exclamationmark.triangle" : nil
-            return name.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: model.basket.contains(node.id) ? "已加入清单" : "未完整读取") }
+            model.basket.contains(node.id) ? queuedIcon : node.issueCount > 0 ? issueIcon : nil
         }
 
         func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-            guard nodes.indices.contains(row), let column = tableColumn else { return nil }
-            let node = nodes[row]
+            guard let node = node(at: row), let display, let column = tableColumn else { return nil }
             if column.identifier.rawValue == "name" {
                 let cell = tableView.makeView(withIdentifier: column.identifier, owner: nil) as? NameCell ?? NameCell()
                 cell.identifier = column.identifier
                 cell.label.stringValue = node.name
-                cell.icon.image = NSImage(systemSymbolName: node.identity.isLink ? "link" : node.isDirectory ? "folder.fill" : "doc", accessibilityDescription: nil)
+                cell.icon.image = node.identity.isLink ? linkIcon : node.isDirectory ? folderIcon : fileIcon
                 cell.icon.contentTintColor = node.isDirectory ? .controlAccentColor : .secondaryLabelColor
                 cell.status.image = statusImage(node)
                 cell.status.setAccessibilityElement(cell.status.image != nil)
@@ -130,15 +135,15 @@ struct DirectoryTable: NSViewRepresentable {
                 cell.addSubview(field); cell.textField = field
                 NSLayoutConstraint.activate([field.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 6), field.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12), field.centerYAnchor.constraint(equalTo: cell.centerYAnchor)])
             }
-            cell.textField?.stringValue = column.identifier.rawValue == "size" ? nodeSizeLabel(node, metric: model.metric) : node.issueCount > 0 ? "—" : percentage(node.bytes(model.metric), total: model.current?.bytes(model.metric) ?? 0)
+            cell.textField?.stringValue = column.identifier.rawValue == "size" ? nodeSizeLabel(node, metric: display.presentation.key.metric) : node.issueCount > 0 ? "—" : percentage(node.bytes(display.presentation.key.metric), total: display.snapshot.nodes[display.presentation.key.directoryID].bytes(display.presentation.key.metric))
             return cell
         }
 
         func tableViewSelectionDidChange(_ notification: Notification) {
-            guard !updating, let table, !model.isBusy else { return }
-            model.selectedID = nodes.indices.contains(table.selectedRow) ? nodes[table.selectedRow].id : nil
+            guard !updating, let table, !model.isBrowsingBusy else { return }
+            model.selectedID = node(at: table.selectedRow)?.id
         }
-        func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool { !model.isBusy }
+        func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool { !model.isBrowsingBusy }
         func tableView(_ tableView: NSTableView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
             guard !updating, let descriptor = tableView.sortDescriptors.first else { return }
             model.sort = descriptor.key == "name" ? (descriptor.ascending ? .nameAscending : .nameDescending) : (descriptor.ascending ? .sizeAscending : .sizeDescending)
@@ -152,9 +157,8 @@ struct DirectoryTable: NSViewRepresentable {
         }
         func menuNeedsUpdate(_ menu: NSMenu) {
             menu.removeAllItems()
-            guard !model.isBusy, let table, nodes.indices.contains(table.clickedRow) else { return }
+            guard !model.isBrowsingBusy, let table, let node = node(at: table.clickedRow) else { return }
             table.selectRowIndexes(IndexSet(integer: table.clickedRow), byExtendingSelection: false)
-            let node = nodes[table.clickedRow]
             func item(_ title: String, _ action: Selector, enabled: Bool = true) {
                 let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
                 item.target = self; item.isEnabled = enabled; menu.addItem(item)

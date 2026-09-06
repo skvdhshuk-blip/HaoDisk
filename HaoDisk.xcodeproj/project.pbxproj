@@ -11,16 +11,23 @@
 		391048F7B55695A37C3F69E7 /* DiskMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */; };
 		4B61F625453D0DAD7F2974F2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4BF6DEADEDAEB165F9D9A095 /* Assets.xcassets */; };
 		52D8D0C4BEFAEE9139F0AB09 /* Treemap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0532F1A5A5B44DD0ADC32956 /* Treemap.swift */; };
+		5B701A903C8E53B1FF11D48D /* DirectoryPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEBF288519C8C38D35D7F82C /* DirectoryPerformanceTests.swift */; };
 		604B13CEB6B2013C357B8945 /* DiskScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D010FCED3986301DE5F539A /* DiskScan.swift */; };
 		623EF2964582B339AB91E699 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CAC0BA4D03F15F082966EA71 /* PrivacyInfo.xcprivacy */; };
 		63866FA1B3E9ED1D223B2D30 /* HaoDiskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21DC82AFF81142D68FE01131 /* HaoDiskApp.swift */; };
 		641FBF2D9E4FCBEB1AAD4239 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85F12661E1CA7807B1FD83F /* ContentView.swift */; };
+		66793DAFD60ADC70ACFC765D /* MapLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22CD5810620E27F3814C922 /* MapLayout.swift */; };
 		6C1B4FC918BDFE090B0C6BF1 /* DiskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822CA554A8834BEFA6DF800F /* DiskModel.swift */; };
 		6F65B368DE0AF191B750FB04 /* HaoDiskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */; };
 		913297E509E878D9CC86A5A9 /* Treemap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0532F1A5A5B44DD0ADC32956 /* Treemap.swift */; };
 		97159BA60D5FECACC2949311 /* CleanupReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349FBF9C8410369F44AB871B /* CleanupReview.swift */; };
+		9FA3F5498D3DD0A235C8B8D0 /* DirectoryPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993D86E3AAD24114E226ED85 /* DirectoryPresentation.swift */; };
+		BAD7AE24E42208CB17FA2184 /* Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD52B715140B48446127F82 /* Formatting.swift */; };
 		C1533C1C6D768627E06C82B0 /* DirectoryTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A222F6C5ACC723DD06FBCAA /* DirectoryTable.swift */; };
 		D7261CA1AC8CFCF3A3FDB75F /* DiskScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D010FCED3986301DE5F539A /* DiskScan.swift */; };
+		E4102713DB7CF658B3FDD4EC /* MapLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22CD5810620E27F3814C922 /* MapLayout.swift */; };
+		E68DD70EC35FDFFB87F860C9 /* DirectoryPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993D86E3AAD24114E226ED85 /* DirectoryPresentation.swift */; };
+		E9B5F2AB8BEF66C37FF06D22 /* Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD52B715140B48446127F82 /* Formatting.swift */; };
 		F0FC6DDCA23DD4CDA7BA65AD /* DiskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822CA554A8834BEFA6DF800F /* DiskModel.swift */; };
 		FE7D361A8BE9C2A61D9A943C /* Cleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37AE1ABAC657C390CD80913 /* Cleanup.swift */; };
 /* End PBXBuildFile section */
@@ -35,10 +42,14 @@
 		6D010FCED3986301DE5F539A /* DiskScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskScan.swift; sourceTree = "<group>"; };
 		822CA554A8834BEFA6DF800F /* DiskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskModel.swift; sourceTree = "<group>"; };
 		8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaoDiskTests.swift; sourceTree = "<group>"; };
+		8CD52B715140B48446127F82 /* Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatting.swift; sourceTree = "<group>"; };
+		993D86E3AAD24114E226ED85 /* DirectoryPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryPresentation.swift; sourceTree = "<group>"; };
 		AAF14A1A1C13E3CE651F8C74 /* HaoDisk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HaoDisk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B85F12661E1CA7807B1FD83F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		CAC0BA4D03F15F082966EA71 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DBF0505B7B3AE1D9BE8C1D7F /* HaoDiskTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HaoDiskTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E22CD5810620E27F3814C922 /* MapLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapLayout.swift; sourceTree = "<group>"; };
+		EEBF288519C8C38D35D7F82C /* DirectoryPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryPerformanceTests.swift; sourceTree = "<group>"; };
 		F37AE1ABAC657C390CD80913 /* Cleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cleanup.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -47,7 +58,9 @@
 			isa = PBXGroup;
 			children = (
 				F37AE1ABAC657C390CD80913 /* Cleanup.swift */,
+				993D86E3AAD24114E226ED85 /* DirectoryPresentation.swift */,
 				6D010FCED3986301DE5F539A /* DiskScan.swift */,
+				8CD52B715140B48446127F82 /* Formatting.swift */,
 				0532F1A5A5B44DD0ADC32956 /* Treemap.swift */,
 			);
 			path = Core;
@@ -61,6 +74,7 @@
 				0A222F6C5ACC723DD06FBCAA /* DirectoryTable.swift */,
 				28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */,
 				822CA554A8834BEFA6DF800F /* DiskModel.swift */,
+				E22CD5810620E27F3814C922 /* MapLayout.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -77,6 +91,7 @@
 		5FC5ED11A6CFB30478C4CEDF /* HaoDiskTests */ = {
 			isa = PBXGroup;
 			children = (
+				EEBF288519C8C38D35D7F82C /* DirectoryPerformanceTests.swift */,
 				8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */,
 			);
 			path = HaoDiskTests;
@@ -201,9 +216,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				FE7D361A8BE9C2A61D9A943C /* Cleanup.swift in Sources */,
+				5B701A903C8E53B1FF11D48D /* DirectoryPerformanceTests.swift in Sources */,
+				9FA3F5498D3DD0A235C8B8D0 /* DirectoryPresentation.swift in Sources */,
 				6C1B4FC918BDFE090B0C6BF1 /* DiskModel.swift in Sources */,
 				D7261CA1AC8CFCF3A3FDB75F /* DiskScan.swift in Sources */,
+				E9B5F2AB8BEF66C37FF06D22 /* Formatting.swift in Sources */,
 				6F65B368DE0AF191B750FB04 /* HaoDiskTests.swift in Sources */,
+				66793DAFD60ADC70ACFC765D /* MapLayout.swift in Sources */,
 				913297E509E878D9CC86A5A9 /* Treemap.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -215,11 +234,14 @@
 				12899C179F21F78C9121A182 /* Cleanup.swift in Sources */,
 				97159BA60D5FECACC2949311 /* CleanupReview.swift in Sources */,
 				641FBF2D9E4FCBEB1AAD4239 /* ContentView.swift in Sources */,
+				E68DD70EC35FDFFB87F860C9 /* DirectoryPresentation.swift in Sources */,
 				C1533C1C6D768627E06C82B0 /* DirectoryTable.swift in Sources */,
 				391048F7B55695A37C3F69E7 /* DiskMapView.swift in Sources */,
 				F0FC6DDCA23DD4CDA7BA65AD /* DiskModel.swift in Sources */,
 				604B13CEB6B2013C357B8945 /* DiskScan.swift in Sources */,
+				BAD7AE24E42208CB17FA2184 /* Formatting.swift in Sources */,
 				63866FA1B3E9ED1D223B2D30 /* HaoDiskApp.swift in Sources */,
+				E4102713DB7CF658B3FDD4EC /* MapLayout.swift in Sources */,
 				52D8D0C4BEFAEE9139F0AB09 /* Treemap.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -261,7 +283,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -274,7 +296,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.2;
+				MARKETING_VERSION = 0.2.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -375,7 +397,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -394,7 +416,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.2;
+				MARKETING_VERSION = 0.2.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

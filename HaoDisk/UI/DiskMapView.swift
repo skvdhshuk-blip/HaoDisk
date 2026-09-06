@@ -1,51 +1,46 @@
 import SwiftUI
-import AppKit
 
 struct DiskMapView: View {
     @ObservedObject var model: DiskModel
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var hoverID: Int?
+    @StateObject private var layout = MapLayoutModel()
     @FocusState private var focused: Bool
-    private let colors: [Color] = [.teal, .blue, .indigo, .mint, .brown, .purple]
 
     var body: some View {
         GeometryReader { geometry in
-            let items = TreemapItems(model.children, metric: model.metric)
-            let rest = items.remaining
-            let remainingName = "其余 \(rest.count) 项"
-            let remainingSize = (rest.contains { $0.issueCount > 0 } ? "已读 " : "") + formattedBytes(items.remainingBytes(model.metric))
-            let weights = items.weights(model.metric)
-            let tiles = Treemap.layout(weights, in: CGRect(origin: .zero, size: geometry.size))
-            let restTile = tiles.first { $0.id == -1 }
-            ZStack(alignment: .topLeading) {
-                if weights.isEmpty {
-                    ContentUnavailableView("没有可绘制的空间", systemImage: "square.dashed", description: Text("文件仍可在目录列表中查看。"))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                ForEach(tiles) { tile in
-                    if tile.id == -1 {
-                        let rect = displayRect(tile.rect)
-                        Button { openRemaining(rest.first?.id) } label: {
-                            RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.08))
-                                .overlay { MapTileLabel(name: remainingName, capacity: remainingSize, size: rect.size) }
-                                .frame(width: rect.width, height: rect.height)
-                                .contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                            .help("\(remainingName) · \(remainingSize)\n在列表中查看")
-                            .accessibilityLabel("\(remainingName)，\(remainingSize)，在列表中查看")
-                            .offset(x: rect.minX, y: rect.minY)
-                    } else if let node = model.snapshot?.nodes[tile.id] {
-                        tileView(node, rect: tile.rect)
+            if let map = model.presentation?.map {
+                let tiles = layout.mapKey == map.key ? layout.tiles : []
+                ZStack(alignment: .topLeading) {
+                    if map.entries.isEmpty {
+                        ContentUnavailableView("没有可绘制的空间", systemImage: "square.dashed", description: Text("文件仍可在目录列表中查看。"))
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                    }
+                    ForEach(tiles) { tile in
+                        if tile.id == -1 {
+                            Button { openRemaining(map.remainingFirstID) } label: {
+                                RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.08))
+                                    .overlay { MapTileLabel(tile: tile) }
+                                    .frame(width: tile.rect.width, height: tile.rect.height)
+                                    .contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                                .help(tile.entry.tooltip)
+                                .accessibilityLabel("\(tile.entry.accessibilityLabel)，在列表中查看")
+                                .offset(x: tile.rect.minX, y: tile.rect.minY)
+                        } else {
+                            DiskMapTile(tile: tile, version: map.key.version, model: model) { focused = true }
+                        }
                     }
                 }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                if let restTile, !MapTileLabel(name: remainingName, capacity: remainingSize, size: displayRect(restTile.rect).size).fitsName {
-                    Button { openRemaining(rest.first?.id) } label: {
-                        Label("\(remainingName) · \(remainingSize)", systemImage: "list.bullet")
-                            .font(.system(size: 11)).padding(.horizontal, 10).padding(.vertical, 6)
-                    }.buttonStyle(.plain).background(.regularMaterial, in: Capsule()).padding(8)
-                        .help("在列表中查看面积过小的项目")
+                .overlay(alignment: .bottomTrailing) {
+                    if let tile = tiles.last(where: { $0.id == -1 }), tile.label != .nameAndCapacity {
+                        Button { openRemaining(map.remainingFirstID) } label: {
+                            Label("\(tile.entry.name) · \(tile.entry.capacity)", systemImage: "list.bullet")
+                                .font(.system(size: 11)).padding(.horizontal, 10).padding(.vertical, 6)
+                        }.buttonStyle(.plain).background(.regularMaterial, in: Capsule()).padding(8)
+                            .help("在列表中查看其余项目")
+                    }
+                }
+                .onChange(of: MapLayoutKey(map: map.key, size: geometry.size), initial: true) { _, _ in
+                    layout.update(map, size: geometry.size)
                 }
             }
         }
@@ -64,76 +59,62 @@ struct DiskMapView: View {
         model.visualMode = false
         model.selectedID = id
     }
+}
 
-    private func tileView(_ node: DiskNode, rect: CGRect) -> some View {
-        let rect = displayRect(rect)
-        let selected = model.selectedID == node.id
-        let hash = node.name.utf8.reduce(UInt64(14695981039346656037)) { ($0 ^ UInt64($1)) &* 1099511628211 }
-        let color = colors[Int(hash % UInt64(colors.count))]
-        return ZStack(alignment: .topLeading) {
+private struct DiskMapTile: View {
+    let tile: RenderedMapTile
+    let version: UUID
+    @ObservedObject var model: DiskModel
+    let focus: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var hovered = false
+    private static let colors: [Color] = [.teal, .blue, .indigo, .mint, .brown, .purple]
+
+    var body: some View {
+        let selected = model.selectedID == tile.id
+        let color = Self.colors[tile.entry.colorIndex]
+        ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 5)
                 .fill(color.opacity(colorScheme == .dark ? (selected ? 0.4 : 0.21) : (selected ? 0.27 : 0.12)))
-            MapTileLabel(name: node.name, capacity: nodeSizeLabel(node, metric: model.metric), size: rect.size)
+            MapTileLabel(tile: tile)
             RoundedRectangle(cornerRadius: 5)
-                .strokeBorder(selected ? Color.accentColor : color.opacity(hoverID == node.id ? 0.65 : 0.17), lineWidth: selected ? 2 : 1)
-            if model.basket.contains(node.id), rect.width > 50, rect.height > 50 {
+                .strokeBorder(selected ? Color.accentColor : color.opacity(hovered ? 0.65 : 0.17), lineWidth: selected ? 2 : 1)
+            if model.basket.contains(tile.id), tile.rect.width > 50, tile.rect.height > 50 {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(Color.accentColor)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(10)
             }
         }
-        .frame(width: rect.width, height: rect.height)
+        .frame(width: tile.rect.width, height: tile.rect.height)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { model.selectedID = node.id; model.openSelected() }
-        .onTapGesture { model.selectedID = node.id; focused = true }
-        .onHover { hoverID = $0 ? node.id : nil }
-        .contextMenu { NodeMenu(node: node, model: model) }
-        .help("\(node.name)\n\(nodeSizeLabel(node, metric: model.metric))\n" + (node.issueCount > 0 ? "未完整读取" : percentage(node.bytes(model.metric), total: model.current?.bytes(model.metric) ?? 0)))
+        .onTapGesture(count: 2) { if model.select(tile.id, version: version) { model.openSelected() } }
+        .onTapGesture { if model.select(tile.id, version: version) { focus() } }
+        .onHover { hovered = $0 }
+        .contextMenu {
+            NodeMenu(id: tile.id, version: version, model: model)
+        }
+        .help(tile.entry.tooltip)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(node.name)，\(nodeSizeLabel(node, metric: model.metric))")
+        .accessibilityLabel(tile.entry.accessibilityLabel)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction { model.selectedID = node.id; focused = true }
-        .accessibilityAction(named: "打开") { model.selectedID = node.id; model.openSelected() }
-        .offset(x: rect.minX, y: rect.minY)
-    }
-
-    private func displayRect(_ rect: CGRect) -> CGRect {
-        let gap = min(3, min(rect.width, rect.height) * 0.2)
-        return rect.insetBy(dx: gap / 2, dy: gap / 2)
+        .accessibilityAction { if model.select(tile.id, version: version) { focus() } }
+        .accessibilityAction(named: "打开") { if model.select(tile.id, version: version) { model.openSelected() } }
+        .offset(x: tile.rect.minX, y: tile.rect.minY)
     }
 }
 
 private struct MapTileLabel: View {
-    let name: String
-    let capacity: String
-    let size: CGSize
-
-    private var large: Bool { size.width > 145 && size.height > 90 }
-    private var padding: CGFloat { large ? 14 : 4 }
-    private var compactPadding: CGFloat { 2 }
-    private var nameFont: NSFont { .systemFont(ofSize: large ? 14 : 11, weight: .medium) }
-    private var sizeFont: NSFont { .monospacedDigitSystemFont(ofSize: large ? 12 : 11, weight: .regular) }
-    private var capacitySize: CGSize { (capacity as NSString).size(withAttributes: [.font: sizeFont]) }
-    private var lineHeight: CGFloat { ceil(nameFont.ascender - nameFont.descender + nameFont.leading) }
-
-    private var fitsSize: Bool {
-        ceil(capacitySize.width) + compactPadding * 2 <= size.width && ceil(capacitySize.height) + compactPadding * 2 <= size.height
-    }
-    var fitsName: Bool {
-        ceil(capacitySize.width) + padding * 2 <= size.width
-            && lineHeight + 4 + ceil(capacitySize.height) + padding * 2 <= size.height
-    }
-
+    let tile: RenderedMapTile
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if fitsName {
-                Text(name).font(Font(nameFont)).lineLimit(1).truncationMode(.middle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if tile.label == .nameAndCapacity {
+                Text(tile.entry.name).font(.system(size: tile.large ? 14 : 11, weight: .medium))
+                    .lineLimit(1).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .leading)
             }
-            if fitsSize {
-                Text(capacity).font(Font(sizeFont)).fixedSize()
-                    .foregroundStyle(fitsName ? .secondary : .primary)
+            if tile.label != .none {
+                Text(tile.entry.capacity).font(.system(size: tile.large ? 12 : 11).monospacedDigit()).fixedSize()
+                    .foregroundStyle(tile.label == .nameAndCapacity ? .secondary : .primary)
             }
-        }.padding(fitsName ? padding : compactPadding).frame(width: size.width, height: size.height, alignment: .topLeading)
+        }.padding(tile.padding).frame(width: tile.rect.width, height: tile.rect.height, alignment: .topLeading)
             .clipped().allowsHitTesting(false)
     }
 }

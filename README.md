@@ -6,7 +6,7 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 
 ![HaoDisk 0.2.2 实际运行界面，扫描自建样本目录](docs/images/capacity-light.png)
 
-0.2.2 商业化候选版：顶部磁盘容量、带容量标签的面积图、原生目录表格与一次审阅清理。当前完成本地签名沙箱验收，尚未提交 App Store。
+0.2.3 商业化候选版：后台目录准备、有上限的浏览缓存、局部刷新和容量面积图。当前完成本地签名沙箱验收，尚未提交 App Store。
 
 ## 功能
 
@@ -15,6 +15,7 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 - 面积图直接显示名称和容量；小块优先显示容量，保留真实比例。最多 80 个独立块，超出部分显示汇总容量并可进入列表。
 - 切换磁盘占用空间与逻辑文件大小，方块面积和容量同步更新；占比可在悬停、简介与完整表格中查看。
 - 后台扫描、实时进度、可取消、隐藏文件、硬链接去重和读取问题清单；同一目录重扫保留浏览位置、选择与有效清单。
+- 目录排序在后台准备，最多缓存 16 个目录 / 500,000 行索引；原生列表复用可见行，方块悬停不重复排序和计算整图布局。
 - 系统目录选择器授权；保存最近一个目录的授权，重启后可继续，随时忘记。
 - 手动待清理清单、父子项去重、清理前文件与路径身份检查、文件夹内容复核、逐项结果反馈和自动重扫。
 - 原生深浅色外观、系统字体、键盘菜单、面积图辅助功能标签；不依赖 WebView。
@@ -72,4 +73,4 @@ docs/             计划、验证记录、App Store 准备
 
 当前界面语言为简体中文。无账号、联网权限、遥测、第三方 SDK 或运行时依赖。
 
-[0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
+[0.2.3 浏览性能对比与验收](docs/BROWSING_PERFORMANCE.md) · [0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
