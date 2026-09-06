@@ -22,6 +22,8 @@ targets:
       path: HaoDisk/Resources/Info.plist
       properties:
         CFBundleDisplayName: HaoDisk
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: Copyright © 2026 HaoDisk
         NSPrincipalClass: NSApplication

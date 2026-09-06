@@ -21,3 +21,14 @@ jobs:
           -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO build
       - name: Validate privacy and entitlement files
         run: plutil -lint HaoDisk/Resources/PrivacyInfo.xcprivacy HaoDisk/Resources/HaoDisk.entitlements
+      - name: Verify packaged version matches Xcode settings
+        run: |
+          xcodebuild -project HaoDisk.xcodeproj -scheme HaoDisk -configuration Release -showBuildSettings -json > .build/release-settings.json
+          python3 - <<'PY'
+          import json, plistlib
+          from pathlib import Path
+          settings = next(item['buildSettings'] for item in json.loads(Path('.build/release-settings.json').read_text()) if item['target'] == 'HaoDisk')
+          info = plistlib.loads(Path('.build/xcode/Build/Products/Release/HaoDisk.app/Contents/Info.plist').read_bytes())
+          assert info['CFBundleShortVersionString'] == settings['MARKETING_VERSION']
+          assert info['CFBundleVersion'] == settings['CURRENT_PROJECT_VERSION']
+          PY
