@@ -24,4 +24,6 @@
 - 实际将样本 library 移到系统废纸篓后，Project 从 8 KB 更新为 4 KB；继续将包含 Test.app 的 Project 移到废纸篓成功，根目录只剩 Keep（4 KB）。未调用手动重新扫描，未清空废纸篓，未清理用户工作区。
 - 0.2.5（7）使用 Developer ID Application: Hao Wang (M2WM2NJP68) 签名，Apple 公证及 stapler 验证通过，Gatekeeper 返回 accepted / Notarized Developer ID。
 
-本次提供本地签名包；GitHub 0.2.4 Release 和 App Store 待审核构建未替换。
+2026-09-06 已公开发布 [GitHub v0.2.5](https://github.com/skvdhshuk-blip/HaoDisk/releases/tag/v0.2.5)。发布附件下载回验通过：SHA-256、严格签名、stapler、Gatekeeper 与分发检查全部通过。GitHub CI 的核心测试、原生测试、Release 构建、权限清单和版本一致性检查全部通过。
+
+同源归档导出的 App Store 0.2.5（7）已于当日 22:11（Asia/Shanghai）提交，状态为“等待审核”，通过后自动发布；尚未上架。

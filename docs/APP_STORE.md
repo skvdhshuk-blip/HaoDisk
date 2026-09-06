@@ -1,6 +1,6 @@
 # Mac App Store 准备
 
-0.2.4（构建 6）已于 2026-09-06 完成正式归档、App Store 分发签名和上传，Apple 已处理构建。已于当日 19:52（Asia/Shanghai）提交审核，Apple 当前状态为“等待审核”。审核通过后自动发布，尚未上架。
+0.2.5（构建 7）已于 2026-09-06 完成正式归档、App Store 分发签名和上传，Apple 已处理构建。已于当日 22:11（Asia/Shanghai）提交审核，Apple 当前状态为“等待审核”。审核通过后自动发布，尚未上架。
 
 ## 权限设计
 
@@ -12,7 +12,7 @@
 
 Release 禁止注入调试用基础 entitlement。正式分发包应没有 `get-task-allow`。工程不包含网络、Apple Events、辅助功能、root、临时沙箱例外、第三方安装器或更新器。
 
-`NSAppDataUsageDescription` 解释用户主动选择范围内的其他应用资料分析；这不是绕过 macOS 权限的手段。Library / 应用资料包仅供分析，清理功能不修改其中内容。
+`NSAppDataUsageDescription` 解释用户主动选择范围内的其他应用资料分析；这不是绕过 macOS 权限的手段。系统和用户主目录中的 Library 路径仍受保护；普通项目中的 Library 可以清理。应用或资料包及其内部项目不能直接加入待清理；普通父目录可经用户确认连同包一起移到废纸篓。
 
 ## 授权流程
 
@@ -49,8 +49,8 @@ App Privacy 问卷按当前实现应选择“不收集数据”。发布前根�
 | --- | --- |
 | Bundle ID | `com.haodisk.app`，已注册 |
 | Apple App ID | `6809158350` |
-| 版本 / 构建 | `0.2.4 / 6`，arm64 + x86_64 |
-| 上传 | 2026-09-06 19:29（Asia/Shanghai）成功，Apple 已处理 |
+| 版本 / 构建 | `0.2.5 / 7`，arm64 + x86_64 |
+| 上传 | 2026-09-06 22:07（Asia/Shanghai）成功，Apple 已处理 |
 | 签名 | Apple Distribution；安装包为 Mac Developer Installer 签名；无 `get-task-allow` |
 | 价格 | 免费、无内购 |
 | 供应范围 | 148 个国家或地区，排除欧盟 27 国，不自动添加未来地区 |
@@ -59,8 +59,8 @@ App Privacy 问卷按当前实现应选择“不收集数据”。发布前根�
 | 出口合规 | 已回答不使用问卷列出的加密算法 |
 | 截图 | 已上传 2560 × 1600 原生应用截图，内容为自建演示目录 |
 | 发布方式 | 审核通过后自动发布 |
-| 审核 | 2026-09-06 19:52 已提交，等待审核 |
-| 提交 ID | `6de69278-abe1-48d7-9c63-9cb174d77bfe` |
+| 审核 | 2026-09-06 22:11 已提交，等待审核 |
+| 提交 ID | `dbc788dc-0cb8-4698-9f9d-8e1a21ce1305` |
 
 - [主页](https://skvdhshuk-blip.github.io/HaoDisk/)
 - [隐私政策](https://skvdhshuk-blip.github.io/HaoDisk/privacy.html)
@@ -69,13 +69,13 @@ App Privacy 问卷按当前实现应选择“不收集数据”。发布前根�
 
 审核联系人姓名沿用 Hao Wang，电话和邮箱由用户补充，已保存并通过提交校验。这些资料只提交 Apple，不存入仓库或公开主页。
 
-本地沙箱应用的功能验证见 0.2.4 验证报告。正式上传成功不等于 TestFlight 真机复验、Intel 实机验证或 Apple 审核通过；这些状态分别记录，不能互相替代。
+本地签名沙箱应用的功能验证见 [0.2.5 清理规则验收](CLEANUP_POLICY_0.2.5.md)。正式上传成功不等于 TestFlight 真机复验、Intel 实机验证或 Apple 审核通过；这些状态分别记录，不能互相替代。
 
 ## 审核说明草稿
 
 HaoDisk is a local disk-space analyzer. Click “选择文件夹” to select a folder using the standard macOS Open panel. The app only scans the selected folder and displays file sizes in a list and treemap. It needs no login or network access.
 
-To test cleanup, create a disposable file in a selected ordinary folder, select it and click the trash toolbar button (or press Command-Delete), review the listed paths, then explicitly click “移到废纸篓”. There is one review sheet and no default Return-key action for moving files. Multiple items can be queued through the context menu before review. The app uses FileManager.trashItem and never permanently deletes files or empties Trash. System folders, Library folders, app/data packages, and unreadable items are protected. Before moving a directory to Trash, the app streams its current contents and compares them with the scan index. Successful cleanup updates affected index records and ancestors without rescanning the whole authorized root; external changes require a manual rescan. The app stores a security-scoped bookmark only for the most recently selected folder; it can be removed from the toolbar menu.
+To test cleanup, create a disposable file in a selected ordinary folder, select it and click the trash toolbar button (or press Command-Delete), review the listed paths, then explicitly click “移到废纸篓”. There is one review sheet and no default Return-key action for moving files. Multiple items can be queued through the context menu before review. The app uses FileManager.trashItem and never permanently deletes files or empties Trash. System directories and system/user-home Library paths remain protected; ordinary project folders named Library/library are allowed. App/data packages and their contents cannot be queued directly. An ordinary parent folder may be queued even when it contains a package; confirming cleanup moves its entire contents to Trash. Incomplete and changed items remain protected. Before moving a directory to Trash, the app streams its current contents and compares them with the scan index. Successful cleanup updates affected index records and ancestors without rescanning the whole authorized root; external changes require a manual rescan. The app stores a security-scoped bookmark only for the most recently selected folder; it can be removed from the toolbar menu.
 
 ## 参考
 
@@ -85,9 +85,9 @@ To test cleanup, create a disposable file in a selected ordinary folder, select 
 
 ## GitHub 直装分发
 
-2026-09-06 的 v0.2.4 GitHub ZIP 已替换为 `Developer ID Application: Hao Wang (M2WM2NJP68)` 签名版本，使用 Xcode 已登录账号的云托管证书。Apple 公证及 stapler 验证通过，Gatekeeper 返回 `accepted / Notarized Developer ID`，`syspolicy_check distribution` 全部通过。旧开发签名附件已移除。
+2026-09-06 的 v0.2.5 GitHub ZIP 使用 `Developer ID Application: Hao Wang (M2WM2NJP68)` 签名版本，使用 Xcode 已登录账号的云托管证书。Apple 公证及 stapler 验证通过，Gatekeeper 返回 `accepted / Notarized Developer ID`，`syspolicy_check distribution` 全部通过。发布附件下载回验也全部通过。
 
-直装版与商店版来自同一份 0.2.4（6）归档，保留原有三项沙箱权限。GitHub 公证与 App Store 审核是独立流程，重新签署直装包不会改变已提交审核的商店构建。
+直装版与商店版来自同一份 0.2.5（7）归档，保留原有三项沙箱权限。GitHub 公证与 App Store 审核是独立流程，重新签署直装包不会改变已提交审核的商店构建。
 
 复用归档时，使用 `xcodebuild -exportArchive`，导出选项为 `method=developer-id`、`teamID=M2WM2NJP68`、`signingStyle=automatic`，并传入 `-allowProvisioningUpdates`。`destination=export` 导出签名应用，`destination=upload` 提交公证。公证通过后对导出应用执行 `xcrun stapler staple`，再进行严格签名、stapler、Gatekeeper 和分发检查，最后打 ZIP。下载解压后的应用也必须重复验证公证凭证。
 

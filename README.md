@@ -10,19 +10,19 @@
 
 ## 下载与版本
 
-**最新版本：0.2.4（构建 6）**，支持 macOS 14 及以上，提供 Apple 芯片与 Intel 通用应用。免费、无广告、无内购，当前界面为简体中文。
+**最新版本：0.2.5（构建 7）**，支持 macOS 14 及以上，提供 Apple 芯片与 Intel 通用应用。免费、无广告、无内购，当前界面为简体中文。
 
 | 渠道 | 状态 |
 | --- | --- |
-| [GitHub Release v0.2.4](https://github.com/skvdhshuk-blip/HaoDisk/releases/tag/v0.2.4) | 提供源码和通用 ZIP；使用 Hao Wang 的 Developer ID 签名，已通过 Apple 公证 |
-| Mac App Store | 2026-09-06 已提交 0.2.4（6），等待 Apple 审核；通过后自动发布，首发不含欧盟 |
+| [GitHub Release v0.2.5](https://github.com/skvdhshuk-blip/HaoDisk/releases/tag/v0.2.5) | 提供源码和通用 ZIP；使用 Hao Wang 的 Developer ID 签名，已通过 Apple 公证 |
+| Mac App Store | 2026-09-06 已提交 0.2.5（7），等待 Apple 审核；通过后自动发布，首发不含欧盟 |
 | 自行构建 | 使用 Xcode 打开工程并选择自己的开发者 Team，步骤见下方 |
 
-下载 `HaoDisk-0.2.4-macOS.zip`，解压后将 `HaoDisk.app` 拖到“应用程序”即可打开。应用使用 `Developer ID Application: Hao Wang (M2WM2NJP68)` 签名，已通过 Apple 公证并附带公证凭证，macOS Gatekeeper 和分发检查通过。
+下载 `HaoDisk-0.2.5-macOS.zip`，解压后将 `HaoDisk.app` 拖到“应用程序”即可打开。应用使用 `Developer ID Application: Hao Wang (M2WM2NJP68)` 签名，已通过 Apple 公证并附带公证凭证，macOS Gatekeeper 和分发检查通过。
 
 Release 附带 `SHA256SUMS.txt` 和 `BUILD.json`；将三个附件放在同一目录，可用 `shasum -a 256 -c SHA256SUMS.txt` 校验下载内容。
 
-## 0.2.5 清理规则修复（尚未发布）
+## 0.2.5 清理规则修复
 
 - 普通项目路径中的 `Library` / `library` 不再触发保护；系统和用户主目录中的真实 Library 路径仍受保护。
 - 普通父目录不再仅因包含应用或资料包而被禁用。包本身和包内项目仍不能直接加入待清理；清理父目录会连同其内容一起移到废纸篓。
@@ -103,4 +103,4 @@ docs/             计划、验证记录、App Store 准备
 
 当前界面语言为简体中文。无账号、联网权限、遥测、第三方 SDK 或运行时依赖。
 
-[0.2.4 完整扫描与局部更新验收](docs/COMPLETE_SCAN_AND_INCREMENTAL.md) · [0.2.3 浏览性能对比与验收](docs/BROWSING_PERFORMANCE.md) · [0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
+[0.2.5 清理规则修复与验收](docs/CLEANUP_POLICY_0.2.5.md) · [0.2.4 完整扫描与局部更新验收](docs/COMPLETE_SCAN_AND_INCREMENTAL.md) · [0.2.3 浏览性能对比与验收](docs/BROWSING_PERFORMANCE.md) · [0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
