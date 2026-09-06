@@ -1,0 +1,11 @@
+.DS_Store
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcarchive
+*.xcresult
+*.app
+*.pkg
+*.dmg
+.fixtures-*/

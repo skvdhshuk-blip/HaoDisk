@@ -1,0 +1,63 @@
+name: HaoDisk
+options:
+  bundleIdPrefix: com.haodisk
+  deploymentTarget:
+    macOS: "14.0"
+  developmentLanguage: zh-Hans
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  HaoDisk:
+    type: application
+    platform: macOS
+    sources:
+      - path: HaoDisk
+        excludes: [Resources/Info.plist, Resources/HaoDisk.entitlements]
+    info:
+      path: HaoDisk/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: HaoDisk
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: Copyright © 2026 HaoDisk
+        NSPrincipalClass: NSApplication
+        NSAppDataUsageDescription: HaoDisk 仅在你选择目录后统计其中的文件大小。其他应用的资料目录仅供分析，不提供清理操作。
+    entitlements:
+      path: HaoDisk/Resources/HaoDisk.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.haodisk.app
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+      configs:
+        Release:
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+  HaoDiskTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [HaoDiskTests, HaoDisk/Core]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  HaoDisk:
+    build:
+      targets:
+        HaoDisk: all
+    test:
+      targets: [HaoDiskTests]
+    run:
+      config: Debug
+    archive:
+      config: Release

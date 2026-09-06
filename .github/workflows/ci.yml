@@ -1,0 +1,18 @@
+name: macOS
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Core behavior tests
+        run: swift test
+      - name: Build sandboxed Release configuration
+        run: >-
+          xcodebuild -project HaoDisk.xcodeproj -scheme HaoDisk
+          -configuration Release -destination 'generic/platform=macOS'
+          -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO build
+      - name: Validate privacy and entitlement files
+        run: plutil -lint HaoDisk/Resources/PrivacyInfo.xcprivacy HaoDisk/Resources/HaoDisk.entitlements

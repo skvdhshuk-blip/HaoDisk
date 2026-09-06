@@ -1,0 +1,453 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		12899C179F21F78C9121A182 /* Cleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37AE1ABAC657C390CD80913 /* Cleanup.swift */; };
+		391048F7B55695A37C3F69E7 /* DiskMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */; };
+		4B61F625453D0DAD7F2974F2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4BF6DEADEDAEB165F9D9A095 /* Assets.xcassets */; };
+		52D8D0C4BEFAEE9139F0AB09 /* Treemap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0532F1A5A5B44DD0ADC32956 /* Treemap.swift */; };
+		604B13CEB6B2013C357B8945 /* DiskScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D010FCED3986301DE5F539A /* DiskScan.swift */; };
+		623EF2964582B339AB91E699 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CAC0BA4D03F15F082966EA71 /* PrivacyInfo.xcprivacy */; };
+		63866FA1B3E9ED1D223B2D30 /* HaoDiskApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21DC82AFF81142D68FE01131 /* HaoDiskApp.swift */; };
+		641FBF2D9E4FCBEB1AAD4239 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85F12661E1CA7807B1FD83F /* ContentView.swift */; };
+		6F65B368DE0AF191B750FB04 /* HaoDiskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */; };
+		913297E509E878D9CC86A5A9 /* Treemap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0532F1A5A5B44DD0ADC32956 /* Treemap.swift */; };
+		97159BA60D5FECACC2949311 /* CleanupReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349FBF9C8410369F44AB871B /* CleanupReview.swift */; };
+		D7261CA1AC8CFCF3A3FDB75F /* DiskScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D010FCED3986301DE5F539A /* DiskScan.swift */; };
+		F0FC6DDCA23DD4CDA7BA65AD /* DiskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822CA554A8834BEFA6DF800F /* DiskModel.swift */; };
+		FE7D361A8BE9C2A61D9A943C /* Cleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37AE1ABAC657C390CD80913 /* Cleanup.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0532F1A5A5B44DD0ADC32956 /* Treemap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Treemap.swift; sourceTree = "<group>"; };
+		21DC82AFF81142D68FE01131 /* HaoDiskApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaoDiskApp.swift; sourceTree = "<group>"; };
+		28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskMapView.swift; sourceTree = "<group>"; };
+		349FBF9C8410369F44AB871B /* CleanupReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanupReview.swift; sourceTree = "<group>"; };
+		4BF6DEADEDAEB165F9D9A095 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6D010FCED3986301DE5F539A /* DiskScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskScan.swift; sourceTree = "<group>"; };
+		822CA554A8834BEFA6DF800F /* DiskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskModel.swift; sourceTree = "<group>"; };
+		8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaoDiskTests.swift; sourceTree = "<group>"; };
+		AAF14A1A1C13E3CE651F8C74 /* HaoDisk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HaoDisk.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B85F12661E1CA7807B1FD83F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CAC0BA4D03F15F082966EA71 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		DBF0505B7B3AE1D9BE8C1D7F /* HaoDiskTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HaoDiskTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F37AE1ABAC657C390CD80913 /* Cleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cleanup.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		01FEFBD7F4233240B7738C39 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				F37AE1ABAC657C390CD80913 /* Cleanup.swift */,
+				6D010FCED3986301DE5F539A /* DiskScan.swift */,
+				0532F1A5A5B44DD0ADC32956 /* Treemap.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		3002826E409202B377E59FAD /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				349FBF9C8410369F44AB871B /* CleanupReview.swift */,
+				B85F12661E1CA7807B1FD83F /* ContentView.swift */,
+				28327EF7A3FE4287ECB1A2DA /* DiskMapView.swift */,
+				822CA554A8834BEFA6DF800F /* DiskModel.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		347537DDBC77BEDF69D9B6DB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AAF14A1A1C13E3CE651F8C74 /* HaoDisk.app */,
+				DBF0505B7B3AE1D9BE8C1D7F /* HaoDiskTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5FC5ED11A6CFB30478C4CEDF /* HaoDiskTests */ = {
+			isa = PBXGroup;
+			children = (
+				8AC1070ADE05B59477728ECA /* HaoDiskTests.swift */,
+			);
+			path = HaoDiskTests;
+			sourceTree = "<group>";
+		};
+		AB302AAEB2111DF046728DB6 /* HaoDisk */ = {
+			isa = PBXGroup;
+			children = (
+				21DC82AFF81142D68FE01131 /* HaoDiskApp.swift */,
+				01FEFBD7F4233240B7738C39 /* Core */,
+				C12CF2CB93D6BBF08677BE15 /* Resources */,
+				3002826E409202B377E59FAD /* UI */,
+			);
+			path = HaoDisk;
+			sourceTree = "<group>";
+		};
+		C12CF2CB93D6BBF08677BE15 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4BF6DEADEDAEB165F9D9A095 /* Assets.xcassets */,
+				CAC0BA4D03F15F082966EA71 /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		C6AEACFBB7D24276F4FC7995 = {
+			isa = PBXGroup;
+			children = (
+				AB302AAEB2111DF046728DB6 /* HaoDisk */,
+				5FC5ED11A6CFB30478C4CEDF /* HaoDiskTests */,
+				347537DDBC77BEDF69D9B6DB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		597E7D04A767FD49AA6287C8 /* HaoDiskTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 276CD4E24E826B0C7C4E3FC3 /* Build configuration list for PBXNativeTarget "HaoDiskTests" */;
+			buildPhases = (
+				06FE4798895C1343C2FDF3C2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HaoDiskTests;
+			packageProductDependencies = (
+			);
+			productName = HaoDiskTests;
+			productReference = DBF0505B7B3AE1D9BE8C1D7F /* HaoDiskTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BE9D1661CBDF8303ED400FB3 /* HaoDisk */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DFCD51EF426BA9AE9A8085D5 /* Build configuration list for PBXNativeTarget "HaoDisk" */;
+			buildPhases = (
+				ED0D87A1802BC4C9958FA97C /* Sources */,
+				AB36AAB4A71986FD3064B9EF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HaoDisk;
+			packageProductDependencies = (
+			);
+			productName = HaoDisk;
+			productReference = AAF14A1A1C13E3CE651F8C74 /* HaoDisk.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1FDCC103110501F7F07E42D2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					BE9D1661CBDF8303ED400FB3 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E960E9FA3742FF8230B12BE0 /* Build configuration list for PBXProject "HaoDisk" */;
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = C6AEACFBB7D24276F4FC7995;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 347537DDBC77BEDF69D9B6DB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BE9D1661CBDF8303ED400FB3 /* HaoDisk */,
+				597E7D04A767FD49AA6287C8 /* HaoDiskTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AB36AAB4A71986FD3064B9EF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B61F625453D0DAD7F2974F2 /* Assets.xcassets in Resources */,
+				623EF2964582B339AB91E699 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		06FE4798895C1343C2FDF3C2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FE7D361A8BE9C2A61D9A943C /* Cleanup.swift in Sources */,
+				D7261CA1AC8CFCF3A3FDB75F /* DiskScan.swift in Sources */,
+				6F65B368DE0AF191B750FB04 /* HaoDiskTests.swift in Sources */,
+				913297E509E878D9CC86A5A9 /* Treemap.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ED0D87A1802BC4C9958FA97C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				12899C179F21F78C9121A182 /* Cleanup.swift in Sources */,
+				97159BA60D5FECACC2949311 /* CleanupReview.swift in Sources */,
+				641FBF2D9E4FCBEB1AAD4239 /* ContentView.swift in Sources */,
+				391048F7B55695A37C3F69E7 /* DiskMapView.swift in Sources */,
+				F0FC6DDCA23DD4CDA7BA65AD /* DiskModel.swift in Sources */,
+				604B13CEB6B2013C357B8945 /* DiskScan.swift in Sources */,
+				63866FA1B3E9ED1D223B2D30 /* HaoDiskApp.swift in Sources */,
+				52D8D0C4BEFAEE9139F0AB09 /* Treemap.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0CFD86328840D8649DCDB94D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		24DDA8BDE7EBC2B9A377AB48 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haodisk.HaoDiskTests;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		2946D627886C37B0346B0EDF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HaoDisk/Resources/HaoDisk.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = HaoDisk/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haodisk.app;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		977436B8BD8F71DEFF6DC640 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HaoDisk/Resources/HaoDisk.entitlements;
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = HaoDisk/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haodisk.app;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		C492C0DED4CA076978C66F5A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DE2016F9FFB2E6358FAAD315 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haodisk.HaoDiskTests;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		276CD4E24E826B0C7C4E3FC3 /* Build configuration list for PBXNativeTarget "HaoDiskTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE2016F9FFB2E6358FAAD315 /* Debug */,
+				24DDA8BDE7EBC2B9A377AB48 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DFCD51EF426BA9AE9A8085D5 /* Build configuration list for PBXNativeTarget "HaoDisk" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2946D627886C37B0346B0EDF /* Debug */,
+				977436B8BD8F71DEFF6DC640 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E960E9FA3742FF8230B12BE0 /* Build configuration list for PBXProject "HaoDisk" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C492C0DED4CA076978C66F5A /* Debug */,
+				0CFD86328840D8649DCDB94D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1FDCC103110501F7F07E42D2 /* Project object */;
+}
