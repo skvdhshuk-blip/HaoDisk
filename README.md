@@ -6,7 +6,7 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 
 ![HaoDisk 0.2 实际运行界面，扫描本项目的真实源码目录](docs/images/haodisk-light.jpg)
 
-0.2 商业化候选版：紧凑导航、原生目录表格、面积图与一次审阅清理。当前完成本地签名沙箱验收，尚未提交 App Store。
+0.2.1 商业化候选版：紧凑导航、原生目录表格、面积图与一次审阅清理。当前完成本地签名沙箱验收，尚未提交 App Store。
 
 ## 功能
 
@@ -50,7 +50,7 @@ xcodebuild -project HaoDisk.xcodeproj -scheme HaoDisk \
 | APFS 克隆、快照、共享块 | 不声称能够精确计算实际可释放空间 |
 | 云端占位文件 | 读取文件系统元数据，不读取正文、不主动下载 |
 | 无权限目录、其他挂载卷 | 标记扫描不完整，提供详情；其他卷可单独选择 |
-| 取消 / 超过 500,000 个项目 | 显示部分结果，禁止本次结果的清理 |
+| 取消 / 达到 500,000 项上限 | 显示部分结果；已读项目可审阅，文件夹须完整重扫且身份与原记录一致后才能移动 |
 | 系统目录、Library、应用 / 资料包 | 可在系统允许时分析，禁止清理这些项目及包含它们的目录 |
 | 移到废纸篓失败 | 保留失败信息；不会降级为永久删除 |
 
@@ -70,4 +70,4 @@ docs/             计划、验证记录、App Store 准备
 
 当前界面语言为简体中文。无账号、联网权限、遥测、第三方 SDK 或运行时依赖。
 
-商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
+[0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)

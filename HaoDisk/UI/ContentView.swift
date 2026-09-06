@@ -154,7 +154,7 @@ struct ContentView: View {
                 Text(model.current.map { nodeSizeLabel($0, metric: model.metric) } ?? "").monospacedDigit()
                 if snapshot.stoppedEarly || snapshot.issueCount > 0 {
                     Button { model.showIssues = true } label: {
-                        Label(snapshot.stoppedEarly ? "扫描未完成" : "\(snapshot.issueCount) 处未读取", systemImage: "exclamationmark.triangle")
+                        Label(snapshot.stopReason?.title ?? "\(snapshot.issueCount) 处未读取", systemImage: "exclamationmark.triangle")
                     }.foregroundStyle(.orange)
                 }
                 if !model.outcomes.isEmpty {
@@ -229,8 +229,8 @@ struct ContentView: View {
 
     private var issuesView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(model.snapshot?.stoppedEarly == true ? "扫描未完成" : "未读取的项目").font(.title3.weight(.semibold))
-            Text(model.snapshot?.stoppedEarly == true ? "当前显示停止前已读取的内容。重新扫描可以更新结果。" : "这些项目未计入大小。可重新选择目录授权，或在 Finder 中检查访问权限。")
+            Text(model.snapshot?.stopReason?.title ?? "未读取的项目").font(.title3.weight(.semibold))
+            Text(model.snapshot?.stopReason?.explanation ?? "这些项目未计入大小。可重新选择目录授权，或在 Finder 中检查访问权限。")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !(model.snapshot?.issues.isEmpty ?? true) {
                 List(model.snapshot?.issues ?? []) { issue in
@@ -242,7 +242,11 @@ struct ContentView: View {
                 if (model.snapshot?.issueCount ?? 0) > 100 { Text("显示前 100 处读取问题").font(.caption).foregroundStyle(.secondary) }
             }
             HStack {
-                Button("重新扫描") { model.showIssues = false; model.scan() }
+                if case .nodeLimit = model.snapshot?.stopReason {
+                    Button("选择较小的文件夹…") { model.showIssues = false; model.chooseFolder() }
+                } else {
+                    Button("重新扫描") { model.showIssues = false; model.scan() }
+                }
                 Spacer()
                 Button("完成") { model.showIssues = false }.keyboardShortcut(.cancelAction)
             }

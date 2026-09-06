@@ -63,12 +63,39 @@ final class HaoDiskTests: XCTestCase {
         for n in 0..<10 { try file("\(n)", bytes: 20) }
         let cancelled = try DiskScanner().scan(root, cancelled: { true })
         XCTAssertTrue(cancelled.stoppedEarly)
+        XCTAssertEqual(cancelled.stopReason, .cancelled)
         XCTAssertFalse(cancelled.isComplete)
         let limited = try DiskScanner(maximumNodes: 4).scan(root)
         XCTAssertEqual(limited.nodes.count, 4)
         XCTAssertTrue(limited.stoppedEarly)
-        XCTAssertGreaterThan(limited.issueCount, 0)
-        XCTAssertNotNil(CleanupPolicy.reason(for: 1, in: limited))
+        XCTAssertEqual(limited.stopReason, .nodeLimit(4))
+        XCTAssertEqual(limited.issueCount, 0)
+        XCTAssertNil(CleanupPolicy.reason(for: 1, in: limited))
+        var moved = false
+        let result = TrashService().move([1], in: limited) { _ in moved = true }
+        XCTAssertTrue(moved)
+        XCTAssertNil(result.first?.error)
+    }
+
+    func testPartialScanChecksOnlyTheSelectedDirectoryBeforeTrash() throws {
+        for name in ["first", "second"] {
+            try file("\(name)/a", bytes: 20)
+            try file("\(name)/b", bytes: 30)
+        }
+        // One directory has been enumerated; the next directory has not.
+        let scan = try DiskScanner(maximumNodes: 5).scan(root)
+        XCTAssertTrue(scan.stoppedEarly)
+        let complete = try XCTUnwrap(scan.nodes.first { $0.parent == 0 && $0.children.count == 2 })
+        let incomplete = try XCTUnwrap(scan.nodes.first { $0.parent == 0 && $0.isDirectory && $0.children.isEmpty })
+        XCTAssertNil(CleanupPolicy.reason(for: complete.id, in: scan))
+        var moved: [URL] = []
+        let accepted = TrashService().move([complete.id], in: scan) { moved.append($0) }
+        XCTAssertNil(accepted.first?.error)
+        XCTAssertEqual(moved, [complete.url])
+        let refused = TrashService().move([incomplete.id], in: scan) { moved.append($0) }
+        XCTAssertNotNil(refused.first?.error)
+        XCTAssertEqual(moved, [complete.url])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: incomplete.url.appendingPathComponent("a").path))
     }
 
     func testTreemapPreservesProportionBoundsAndDoesNotOverlap() {

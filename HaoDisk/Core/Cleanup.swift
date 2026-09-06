@@ -19,7 +19,8 @@ enum CleanupPolicy {
     static func reason(for id: Int, in snapshot: DiskSnapshot) -> String? {
         let node = snapshot.nodes[id]
         if id == 0 { return "所选分析根目录不能加入清理。" }
-        if snapshot.stoppedEarly { return "本次扫描尚未完整结束，请重新扫描后清理。" }
+        // A stopped scan elsewhere does not invalidate this item. Directories still
+        // require a complete, identity-matching rescan in TrashService before moving.
         if node.issueCount > 0 { return "此项目包含未读取的内容，暂不能清理。" }
         if node.identity.isLink { return "符号链接仅供分析，请在 Finder 中处理。" }
         if !node.identity.isDirectory && !node.identity.isRegular { return "此文件类型仅供分析。" }
@@ -87,9 +88,12 @@ struct TrashService {
                         original[snapshot.nodes[next].url.path] = snapshot.nodes[next].identity
                         pending.append(contentsOf: snapshot.nodes[next].children)
                     }
-                    guard fresh.isComplete, fresh.nodes.count == original.count,
+                    guard fresh.isComplete else {
+                        throw CleanupError.refused("无法完整核对所选文件夹，请检查权限或选择更小的目录。")
+                    }
+                    guard fresh.nodes.count == original.count,
                           fresh.nodes.allSatisfy({ original[$0.url.path] == $0.identity }) else {
-                        throw CleanupError.refused("文件夹内容在扫描后发生变化，请重新扫描。")
+                        throw CleanupError.refused("文件夹内容未完整读取或已发生变化，请选择它的上级目录重新扫描。")
                     }
                 }
                 try operation(node.url)

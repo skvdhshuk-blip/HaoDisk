@@ -90,6 +90,7 @@ final class DiskModel: ObservableObject {
     func chooseFolder() {
         guard !isBusy else { return }
         let panel = NSOpenPanel()
+        panel.directoryURL = current?.url ?? access?.url
         panel.title = "选择要分析的文件夹"
         panel.message = "HaoDisk 只分析你选择的目录。清理前需要你确认，所有处理均在本机进行。"
         panel.prompt = "授权并分析"

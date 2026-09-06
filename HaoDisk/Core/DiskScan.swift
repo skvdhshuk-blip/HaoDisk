@@ -72,15 +72,35 @@ struct ScanProgress: Sendable {
     let folder: String
 }
 
+enum ScanStopReason: Equatable, Sendable {
+    case cancelled
+    case nodeLimit(Int)
+
+    var title: String {
+        switch self {
+        case .cancelled: return "扫描已停止"
+        case .nodeLimit: return "已达扫描上限"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .cancelled: return "当前仅显示停止前已读取的内容。可重新扫描以补全结果。"
+        case .nodeLimit(let limit): return "已读取 \(limit.formatted()) 个项目。要补全结果，请选择待清理项目的较小上级目录重新分析。"
+        }
+    }
+}
+
 struct DiskSnapshot: Sendable {
     let nodes: [DiskNode]
     let issues: [ScanIssue]
     let issueCount: Int
-    let stoppedEarly: Bool
+    let stopReason: ScanStopReason?
     let elapsed: TimeInterval
     let totalCapacity: Int64?
     let availableCapacity: Int64?
     var root: DiskNode { nodes[0] }
+    var stoppedEarly: Bool { stopReason != nil }
     var isComplete: Bool { !stoppedEarly && issueCount == 0 }
 
     func children(of id: Int, metric: SizeMetric, sort: DirectorySort = .sizeDescending) -> [DiskNode] {
@@ -124,7 +144,7 @@ struct DiskScanner: Sendable {
         var identities = Set<String>()
         var issues: [ScanIssue] = []
         var issueCount = 0
-        var stopped = false
+        var stopReason: ScanStopReason?
         var allocated: Int64 = 0
         var lastProgress = Date.distantPast
 
@@ -142,11 +162,10 @@ struct DiskScanner: Sendable {
         }) else { throw ScanError.unreadable }
 
         while true {
-            if cancelled() { stopped = true; break }
+            if cancelled() { stopReason = .cancelled; break }
             guard let url = enumerator.nextObject() as? URL else { break }
             if nodes.count >= maximumNodes {
-                stopped = true
-                record(root, "项目数量达到 \(maximumNodes) 上限，请选择更小的目录。", at: 0)
+                stopReason = .nodeLimit(maximumNodes)
                 break
             }
             let parent = directories[url.deletingLastPathComponent().path] ?? 0
@@ -196,7 +215,7 @@ struct DiskScanner: Sendable {
             }
         }
         let capacity = try? root.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey])
-        return DiskSnapshot(nodes: nodes, issues: issues, issueCount: issueCount, stoppedEarly: stopped,
+        return DiskSnapshot(nodes: nodes, issues: issues, issueCount: issueCount, stopReason: stopReason,
                             elapsed: Date().timeIntervalSince(started),
                             totalCapacity: capacity?.volumeTotalCapacity.map(Int64.init),
                             availableCapacity: capacity?.volumeAvailableCapacity.map(Int64.init))

@@ -24,6 +24,10 @@ struct CleanupReview: View {
                         .buttonStyle(.borderless).disabled(model.isCleaning).help("从清单移除")
                 }.padding(.vertical, 6)
             }.listStyle(.inset).frame(height: min(320, max(100, CGFloat(model.basket.count) * 65)))
+            if model.snapshot?.stoppedEarly == true {
+                Text("扫描仅包含部分结果。移动前会完整核对所选文件夹；内容不全或已变化的项目不会移动。")
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             Text("文件夹将连同全部内容移到废纸篓。可在 Finder 中找回；清空前仍占用空间。")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
