@@ -6,9 +6,11 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let snapshot = model.snapshot {
-                pathBar(snapshot)
+            if model.hasAccess || model.snapshot != nil {
+                pathBar
                 Divider()
+            }
+            if let snapshot = model.snapshot {
                 workspace(snapshot).disabled(model.isBusy)
                 Divider()
                 statusBar(snapshot)
@@ -91,7 +93,7 @@ struct ContentView: View {
         }.frame(maxWidth: 400).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func pathBar(_ snapshot: DiskSnapshot) -> some View {
+    private func breadcrumbs(_ snapshot: DiskSnapshot) -> some View {
         let ancestors = snapshot.ancestors(of: model.currentID)
         return HStack(spacing: 9) {
             Image(systemName: "folder").foregroundStyle(.secondary)
@@ -114,19 +116,39 @@ struct ContentView: View {
                     .help(snapshot.nodes[id].url.path)
                     .layoutPriority(id == model.currentID ? 1 : 0)
             }
-            Spacer(minLength: 16)
-            Menu {
-                Picker("统计方式", selection: $model.metric) {
-                    ForEach(SizeMetric.allCases) { Text($0.rawValue).tag($0) }
+        }.disabled(model.isBusy)
+    }
+
+    private var pathBar: some View {
+        HStack(spacing: 16) {
+            Group {
+                if let snapshot = model.snapshot {
+                    breadcrumbs(snapshot)
+                } else {
+                    Label(model.rootFolderName, systemImage: "folder").lineLimit(1).truncationMode(.middle)
                 }
-                Divider()
-                Picker("排序", selection: $model.sort) {
-                    ForEach(DirectorySort.allCases) { Text($0.rawValue).tag($0) }
-                }
-            } label: {
-                HStack(spacing: 5) { Text(model.metric.rawValue); Image(systemName: "line.3.horizontal.decrease") }
-            }.menuStyle(.borderlessButton).fixedSize().foregroundStyle(.secondary).help("统计方式与排序")
-        }.font(.system(size: 12)).padding(.horizontal, 16).frame(height: 37).disabled(model.isBusy)
+            }.frame(maxWidth: .infinity, alignment: .leading).clipped()
+            Button { showVolume.toggle() } label: {
+                Text("磁盘可用 \(model.volumeCapacity?.available.map(formattedBytes) ?? "—") / 共 \(model.volumeCapacity?.total.map(formattedBytes) ?? "—")")
+                    .monospacedDigit()
+            }.buttonStyle(.plain).fixedSize()
+                .help("所选文件夹所在磁盘的可用空间与总容量")
+                .popover(isPresented: $showVolume, arrowEdge: .bottom) { volumeDetails }
+            if model.snapshot != nil {
+                Menu {
+                    Picker("统计方式", selection: $model.metric) {
+                        ForEach(SizeMetric.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    Divider()
+                    Picker("排序", selection: $model.sort) {
+                        ForEach(DirectorySort.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                } label: {
+                    HStack(spacing: 5) { Text(model.metric.rawValue); Image(systemName: "line.3.horizontal.decrease") }
+                }.menuStyle(.borderlessButton).fixedSize().foregroundStyle(.secondary).help("统计方式与排序")
+                    .disabled(model.isBusy)
+            }
+        }.font(.system(size: 12)).padding(.horizontal, 16).frame(height: 37)
     }
 
     @ViewBuilder private func workspace(_ snapshot: DiskSnapshot) -> some View {
@@ -164,10 +186,6 @@ struct ContentView: View {
                 }
             }
             Spacer(minLength: 12)
-            if let available = snapshot.availableCapacity {
-                Button { showVolume.toggle() } label: { Text("磁盘可用 \(formattedBytes(available))") }
-                    .popover(isPresented: $showVolume, arrowEdge: .top) { volumeDetails(snapshot) }
-            }
         }.font(.system(size: 11)).foregroundStyle(.secondary).buttonStyle(.plain)
             .padding(.horizontal, 16).frame(height: 31)
     }
@@ -211,14 +229,16 @@ struct ContentView: View {
         GridRow { Text(label).foregroundStyle(.secondary); Text(value).monospacedDigit().textSelection(.enabled) }
     }
 
-    private func volumeDetails(_ snapshot: DiskSnapshot) -> some View {
+    private var volumeDetails: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label("所在磁盘", systemImage: "internaldrive").font(.headline)
-            if let total = snapshot.totalCapacity, let available = snapshot.availableCapacity, total > 0 {
+            if let total = model.volumeCapacity?.total, let available = model.volumeCapacity?.available, total > 0 {
                 ProgressView(value: Double(max(0, total - available)), total: Double(total))
-                Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 10) {
-                    infoRow("磁盘总容量", formattedBytes(total))
-                    infoRow("可用空间", formattedBytes(available))
+            }
+            Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 10) {
+                infoRow("磁盘总容量", model.volumeCapacity?.total.map(formattedBytes) ?? "—")
+                infoRow("可用空间", model.volumeCapacity?.available.map(formattedBytes) ?? "—")
+                if let snapshot = model.snapshot {
                     infoRow("本次已读", formattedBytes(snapshot.root.bytes(model.metric)))
                 }
             }

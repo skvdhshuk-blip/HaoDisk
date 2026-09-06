@@ -1,6 +1,6 @@
 # 验证记录
 
-最新候选版：0.2.1 (3)，文件夹清理回归见 [FOLDER_CLEANUP_FIX.md](FOLDER_CLEANUP_FIX.md)。0.2 商业化布局与真实目录验收见 [COMMERCIAL_ACCEPTANCE.md](COMMERCIAL_ACCEPTANCE.md)。
+最新候选版：0.2.2 (4)，容量与面积图验收见 [CAPACITY_AND_MAP.md](CAPACITY_AND_MAP.md)。0.2.1 文件夹清理回归见 [FOLDER_CLEANUP_FIX.md](FOLDER_CLEANUP_FIX.md)。0.2 商业化布局与真实目录验收见 [COMMERCIAL_ACCEPTANCE.md](COMMERCIAL_ACCEPTANCE.md)。
 
 ## 0.1 基线
 

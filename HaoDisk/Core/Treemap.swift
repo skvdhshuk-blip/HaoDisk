@@ -11,6 +11,28 @@ struct MapTile: Identifiable, Sendable {
     let rect: CGRect
 }
 
+struct TreemapItems {
+    let shown: [DiskNode]
+    let remaining: [DiskNode]
+
+    init(_ nodes: [DiskNode], metric: SizeMetric) {
+        let items = nodes.filter { $0.bytes(metric) > 0 }.sorted {
+            $0.bytes(metric) == $1.bytes(metric) ? $0.id < $1.id : $0.bytes(metric) > $1.bytes(metric)
+        }
+        shown = Array(items.prefix(80))
+        remaining = Array(items.dropFirst(80))
+    }
+
+    func remainingBytes(_ metric: SizeMetric) -> Int64 {
+        remaining.reduce(0) { $0 + $1.bytes(metric) }
+    }
+
+    func weights(_ metric: SizeMetric) -> [MapWeight] {
+        shown.map { MapWeight(id: $0.id, value: Double($0.bytes(metric))) }
+            + (remaining.isEmpty ? [] : [MapWeight(id: -1, value: Double(remainingBytes(metric)))])
+    }
+}
+
 /// Squarified treemap. Geometry is independent of views and uses the full measured area.
 enum Treemap {
     static func layout(_ input: [MapWeight], in bounds: CGRect) -> [MapTile] {

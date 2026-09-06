@@ -4,14 +4,16 @@ A small, native macOS disk space analyzer built with Swift, SwiftUI, AppKit and 
 
 把空间，看明白。按文件夹查看大小和面积占比，逐层找到占空间的项目，检查后移到系统废纸篓。
 
-![HaoDisk 0.2 实际运行界面，扫描本项目的真实源码目录](docs/images/haodisk-light.jpg)
+![HaoDisk 0.2.2 实际运行界面，扫描自建样本目录](docs/images/capacity-light.png)
 
-0.2.1 商业化候选版：紧凑导航、原生目录表格、面积图与一次审阅清理。当前完成本地签名沙箱验收，尚未提交 App Store。
+0.2.2 商业化候选版：顶部磁盘容量、带容量标签的面积图、原生目录表格与一次审阅清理。当前完成本地签名沙箱验收，尚未提交 App Store。
 
 ## 功能
 
 - 左侧目录列表与右侧矩形面积图联动，支持名称 / 大小双向排序、键盘选择与下钻、路径菜单、前进 / 后退和完整表格模式。
-- 切换磁盘占用空间与逻辑文件大小；目录占比集中在面积图 / 表格；整卷容量和统计说明按需展开。
+- 顶部常驻所选目录所在磁盘的可用空间与总容量，授权后即可读取，不必等待目录扫描完成。
+- 面积图直接显示名称和容量；小块优先显示容量，保留真实比例。最多 80 个独立块，超出部分显示汇总容量并可进入列表。
+- 切换磁盘占用空间与逻辑文件大小，方块面积和容量同步更新；占比可在悬停、简介与完整表格中查看。
 - 后台扫描、实时进度、可取消、隐藏文件、硬链接去重和读取问题清单；同一目录重扫保留浏览位置、选择与有效清单。
 - 系统目录选择器授权；保存最近一个目录的授权，重启后可继续，随时忘记。
 - 手动待清理清单、父子项去重、清理前文件与路径身份检查、文件夹内容复核、逐项结果反馈和自动重扫。
@@ -70,4 +72,4 @@ docs/             计划、验证记录、App Store 准备
 
 当前界面语言为简体中文。无账号、联网权限、遥测、第三方 SDK 或运行时依赖。
 
-[0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)
+[0.2.2 容量与面积图验收](docs/CAPACITY_AND_MAP.md) · [0.2.1 文件夹清理修复](docs/FOLDER_CLEANUP_FIX.md) · 商业化目标与验收：[COMMERCIAL_ACCEPTANCE.md](docs/COMMERCIAL_ACCEPTANCE.md) · 隐私说明：[PRIVACY.md](PRIVACY.md) · 开发计划：[PLAN.md](docs/PLAN.md) · 发布准备：[APP_STORE.md](docs/APP_STORE.md) · 验证记录：[VALIDATION.md](docs/VALIDATION.md)

@@ -72,6 +72,17 @@ struct ScanProgress: Sendable {
     let folder: String
 }
 
+struct VolumeCapacity: Equatable, Sendable {
+    let total: Int64?
+    let available: Int64?
+
+    static func read(at url: URL) -> VolumeCapacity {
+        let values = try? url.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey])
+        return VolumeCapacity(total: values?.volumeTotalCapacity.map(Int64.init),
+                              available: values?.volumeAvailableCapacity.map(Int64.init))
+    }
+}
+
 enum ScanStopReason: Equatable, Sendable {
     case cancelled
     case nodeLimit(Int)
@@ -214,11 +225,11 @@ struct DiskScanner: Sendable {
                 nodes[parent].issueCount += nodes[id].issueCount
             }
         }
-        let capacity = try? root.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey])
+        let capacity = VolumeCapacity.read(at: root)
         return DiskSnapshot(nodes: nodes, issues: issues, issueCount: issueCount, stopReason: stopReason,
                             elapsed: Date().timeIntervalSince(started),
-                            totalCapacity: capacity?.volumeTotalCapacity.map(Int64.init),
-                            availableCapacity: capacity?.volumeAvailableCapacity.map(Int64.init))
+                            totalCapacity: capacity.total,
+                            availableCapacity: capacity.available)
     }
 }
 

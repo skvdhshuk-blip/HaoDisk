@@ -119,6 +119,70 @@ final class HaoDiskTests: XCTestCase {
         XCTAssertTrue(Treemap.layout([MapWeight(id: 0, value: 20)], in: .zero).isEmpty)
     }
 
+    func testMapKeepsTinyItemsIndependentAtEveryWindowSize() throws {
+        try file("large", bytes: 1_000_000)
+        for n in 0..<20 { try file("small-\(n)", bytes: 1) }
+        let scan = try DiskScanner().scan(root)
+        let items = TreemapItems(scan.children(of: 0, metric: .logical), metric: .logical)
+        XCTAssertEqual(items.shown.count, 21)
+        XCTAssertTrue(items.remaining.isEmpty)
+        for size in [CGSize(width: 380, height: 400), CGSize(width: 800, height: 700)] {
+            let weights = items.weights(.logical)
+            let total = weights.reduce(0) { $0 + $1.value }
+            let tiles = Treemap.layout(weights, in: CGRect(origin: .zero, size: size))
+            XCTAssertEqual(Set(tiles.map(\.id)), Set(scan.root.children))
+            for tile in tiles {
+                XCTAssertGreaterThan(tile.rect.width, 0)
+                XCTAssertGreaterThan(tile.rect.height, 0)
+                XCTAssertEqual(tile.rect.width * tile.rect.height / (size.width * size.height),
+                               Double(scan.nodes[tile.id].logicalBytes) / total, accuracy: 0.000001)
+            }
+        }
+    }
+
+    func testMapLimitsOnlyPositiveItemsAndAccountsForOverflow() throws {
+        for n in 0..<85 { try file("file-\(n)", bytes: n + 1) }
+        try file("empty", bytes: 0)
+        let scan = try DiskScanner().scan(root)
+        let items = TreemapItems(scan.children(of: 0, metric: .logical), metric: .logical)
+        XCTAssertEqual(items.shown.count, 80)
+        XCTAssertEqual(items.remaining.count, 5)
+        XCTAssertEqual(items.remainingBytes(.logical), 15)
+        XCTAssertEqual(items.weights(.logical).reduce(0) { $0 + $1.value }, Double(scan.root.logicalBytes))
+        XCTAssertEqual(items.weights(.logical).last?.id, -1)
+        XCTAssertFalse((items.shown + items.remaining).contains { $0.name == "empty" })
+    }
+
+    func testMapFollowsSelectedSizeMetric() throws {
+        let sparse = try file("sparse", bytes: 1)
+        let handle = try FileHandle(forWritingTo: sparse)
+        try handle.truncate(atOffset: 8 * 1024 * 1024)
+        try handle.close()
+        try file("regular", bytes: 16384)
+        let scan = try DiskScanner().scan(root)
+        for metric in SizeMetric.allCases {
+            let items = TreemapItems(scan.children(of: 0, metric: metric), metric: metric)
+            for weight in items.weights(metric) {
+                XCTAssertEqual(weight.value, Double(scan.nodes[weight.id].bytes(metric)))
+            }
+        }
+        XCTAssertEqual(TreemapItems(scan.children(of: 0, metric: .logical), metric: .logical).shown.first?.name, "sparse")
+        XCTAssertEqual(TreemapItems(scan.children(of: 0, metric: .allocated), metric: .allocated).shown.first?.name, "regular")
+    }
+
+    func testVolumeCapacityIsIndependentOfDirectoryScanAndMissingIsUnknown() throws {
+        let capacity = VolumeCapacity.read(at: root)
+        let expected = try root.resourceValues(forKeys: [.volumeTotalCapacityKey])
+        XCTAssertEqual(capacity.total, expected.volumeTotalCapacity.map(Int64.init))
+        XCTAssertGreaterThan(try XCTUnwrap(capacity.total), 0)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(capacity.available), 0)
+        let empty = try DiskScanner().scan(root)
+        XCTAssertEqual(empty.root.logicalBytes, 0)
+        XCTAssertEqual(empty.totalCapacity, capacity.total)
+        XCTAssertEqual(VolumeCapacity.read(at: root.appendingPathComponent("missing")), VolumeCapacity(total: nil, available: nil))
+        XCTAssertNotEqual(VolumeCapacity(total: nil, available: nil), VolumeCapacity(total: 0, available: 0))
+    }
+
     func testPathBoundaryAndProtectedDirectories() {
         XCTAssertFalse(CleanupPolicy.isDescendant(URL(fileURLWithPath: "/Users/a-backup/file"), of: URL(fileURLWithPath: "/Users/a")))
         XCTAssertFalse(CleanupPolicy.isDescendant(URL(fileURLWithPath: "/Users/a"), of: URL(fileURLWithPath: "/Users/a")))
@@ -231,6 +295,18 @@ final class HaoDiskTests: XCTestCase {
     }
 
     #if !SWIFT_PACKAGE
+    @MainActor func testVolumeStateSurvivesMetricChangesAndClearsWithAuthorization() {
+        let model = DiskModel()
+        let capacity = VolumeCapacity(total: 1000, available: 400)
+        model.volumeCapacity = capacity
+        model.metric = .logical
+        XCTAssertEqual(model.volumeCapacity, capacity)
+        model.metric = .allocated
+        XCTAssertEqual(model.volumeCapacity, capacity)
+        model.forgetFolder()
+        XCTAssertNil(model.volumeCapacity)
+    }
+
     @MainActor func testNavigationSelectionSortAndCleanupReview() async throws {
         try file("folder/a", bytes: 50)
         try file("z-file", bytes: 20)

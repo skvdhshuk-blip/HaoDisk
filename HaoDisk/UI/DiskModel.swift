@@ -19,6 +19,7 @@ private final class FolderAccess {
 @MainActor
 final class DiskModel: ObservableObject {
     @Published var snapshot: DiskSnapshot?
+    @Published var volumeCapacity: VolumeCapacity?
     @Published var currentID = 0 { didSet { refreshChildren() } }
     @Published var selectedID: Int? { didSet { refreshSelection() } }
     @Published var metric: SizeMetric = .allocated { didSet { refreshChildren() } }
@@ -47,6 +48,7 @@ final class DiskModel: ObservableObject {
 
     var isBusy: Bool { isScanning || isCleaning || isChoosing }
     var hasAccess: Bool { access != nil }
+    var rootFolderName: String { access?.url.lastPathComponent ?? "文件夹" }
     var canGoBack: Bool { !history.isEmpty }
     var canGoForward: Bool { !future.isEmpty }
     var current: DiskNode? { snapshot?.nodes[currentID] }
@@ -139,6 +141,7 @@ final class DiskModel: ObservableObject {
         hasBookmark = false
         access = nil
         snapshot = nil
+        volumeCapacity = nil
         children = []
         basket = []
         selectedID = nil
@@ -160,6 +163,7 @@ final class DiskModel: ObservableObject {
         showReview = false
         if !sameRoot {
             snapshot = nil; children = []; selectedID = nil
+            volumeCapacity = nil
             currentID = 0; history = []; future = []
         }
         if !preservingOutcomes { outcomes = [] }
@@ -167,7 +171,12 @@ final class DiskModel: ObservableObject {
         let token = UUID()
         scanID = token
         let job = Task.detached(priority: .userInitiated) { [self] in
-            try DiskScanner().scan(url, cancelled: { Task.isCancelled }) { value in
+            let capacity = VolumeCapacity.read(at: url)
+            await MainActor.run {
+                guard self.scanID == token else { return }
+                self.volumeCapacity = capacity
+            }
+            return try DiskScanner().scan(url, cancelled: { Task.isCancelled }) { value in
                 Task { @MainActor in
                     guard self.scanID == token, self.isScanning else { return }
                     self.progress = value
@@ -180,6 +189,7 @@ final class DiskModel: ObservableObject {
                 let result = try await job.value
                 guard scanID == token else { return }
                 snapshot = result
+                volumeCapacity = VolumeCapacity(total: result.totalCapacity, available: result.availableCapacity)
                 let wanted = Set(oldHistory + oldFuture + oldQueue + [currentPath, selectedPath].compactMap { $0 })
                 var restored: [String: Int] = [:]
                 for node in result.nodes where wanted.contains(node.url.path) { restored[node.url.path] = node.id }
