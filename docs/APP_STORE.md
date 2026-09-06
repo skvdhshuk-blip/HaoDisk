@@ -82,3 +82,13 @@ To test cleanup, create a disposable file in a selected ordinary folder, select 
 - [App Review Guidelines 2.4.5](https://developer.apple.com/app-store/review/guidelines/)
 - [Accessing files from the macOS App Sandbox](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox)
 - [Required reason API reasons](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitypereasons)
+
+## GitHub 直装分发
+
+2026-09-06 的 v0.2.4 GitHub ZIP 已替换为 `Developer ID Application: Hao Wang (M2WM2NJP68)` 签名版本，使用 Xcode 已登录账号的云托管证书。Apple 公证及 stapler 验证通过，Gatekeeper 返回 `accepted / Notarized Developer ID`，`syspolicy_check distribution` 全部通过。旧开发签名附件已移除。
+
+直装版与商店版来自同一份 0.2.4（6）归档，保留原有三项沙箱权限。GitHub 公证与 App Store 审核是独立流程，重新签署直装包不会改变已提交审核的商店构建。
+
+复用归档时，使用 `xcodebuild -exportArchive`，导出选项为 `method=developer-id`、`teamID=M2WM2NJP68`、`signingStyle=automatic`，并传入 `-allowProvisioningUpdates`。`destination=export` 导出签名应用，`destination=upload` 提交公证。公证通过后对导出应用执行 `xcrun stapler staple`，再进行严格签名、stapler、Gatekeeper 和分发检查，最后打 ZIP。下载解压后的应用也必须重复验证公证凭证。
+
+[Apple Developer ID 分发说明](https://developer.apple.com/developer-id/) · [Xcode 公证流程](https://help.apple.com/xcode/mac/current/en.lproj/dev88332a81e.html)

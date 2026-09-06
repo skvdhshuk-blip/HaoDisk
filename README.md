@@ -14,11 +14,13 @@
 
 | 渠道 | 状态 |
 | --- | --- |
-| [GitHub Release v0.2.4](https://github.com/skvdhshuk-blip/HaoDisk/releases/tag/v0.2.4) | 提供源码和开发签名 ZIP；尚未公证，macOS Gatekeeper 可能阻止打开 |
+| [GitHub Release v0.2.4](https://github.com/skvdhshuk-blip/HaoDisk/releases/tag/v0.2.4) | 提供源码和通用 ZIP；使用 Hao Wang 的 Developer ID 签名，已通过 Apple 公证 |
 | Mac App Store | 2026-09-06 已提交 0.2.4（6），等待 Apple 审核；通过后自动发布，首发不含欧盟 |
 | 自行构建 | 使用 Xcode 打开工程并选择自己的开发者 Team，步骤见下方 |
 
-ZIP 内为 `HaoDisk.app`。Release 附带 `SHA256SUMS.txt` 和构建说明，可用 `shasum -a 256 -c SHA256SUMS.txt` 校验下载内容。开发签名包不等同于经过 Developer ID 签名和 Apple 公证的公开分发包；普通用户可等待 Mac App Store 版本。
+下载 `HaoDisk-0.2.4-macOS.zip`，解压后将 `HaoDisk.app` 拖到“应用程序”即可打开。应用使用 `Developer ID Application: Hao Wang (M2WM2NJP68)` 签名，已通过 Apple 公证并附带公证凭证，macOS Gatekeeper 和分发检查通过。
+
+Release 附带 `SHA256SUMS.txt` 和 `BUILD.json`；将三个附件放在同一目录，可用 `shasum -a 256 -c SHA256SUMS.txt` 校验下载内容。
 
 ## 0.2.4 更新
 
